@@ -5,7 +5,7 @@
 ## 🚀 一键安装
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/your-repo/mtproxy/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/install.sh)
 ```
 
 安装完成后会显示连接信息，使用 `mtproxy` 命令打开管理面板。
@@ -25,7 +25,7 @@ mtproxy
 
 ```bash
 # 安装
-bash <(curl -fsSL https://raw.githubusercontent.com/your-repo/mtproxy/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/install.sh)
 
 # 管理面板
 mtproxy
