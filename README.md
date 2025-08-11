@@ -1,467 +1,453 @@
-# Python MTProxy
+# MTProxy - 一键部署 Telegram 代理服务器
 
-A modern, feature-rich Python implementation of MTProxy for Telegram with comprehensive SSH remote management capabilities.
+一个功能完善、易于部署和管理的 MTProxy 代理服务器，支持一键安装、图形化管理和自动运维。
 
-## Features
+## ✨ 核心特性
 
-🚀 **Easy Deployment**
-- One-click deployment script for Debian/Ubuntu
-- Automatic systemd service configuration
-- Comprehensive health monitoring
+### 🚀 零配置部署
+- **一键安装**: 支持 Ubuntu/Debian/CentOS，全自动部署
+- **智能检测**: 自动识别系统环境，安装所需依赖
+- **防火墙配置**: 自动配置防火墙规则，无需手动设置
+- **系统服务**: 自动注册 systemd 服务，支持开机自启
 
-🛠️ **SSH Remote Management**
-- Complete command-line interface
-- Real-time log viewing and analysis
-- Remote configuration editing
-- Health checking and diagnostics
+### 🎛️ 可视化管理
+- **交互式菜单**: 直观的管理界面，所有功能一目了然
+- **实时监控**: 服务状态、资源使用、连接统计实时显示
+- **配置管理**: 在线编辑配置、一键重启、配置验证
+- **连接信息**: 自动生成连接链接和二维码，一键分享
 
-🔧 **Production Ready**
-- Systemd integration with auto-restart
-- Log rotation and cleanup
-- Security hardening
-- Performance monitoring
+### 🛡️ 企业级可靠性
+- **健康检查**: 全面的系统检查，问题及时发现
+- **自动恢复**: 服务异常自动重启，保障连续运行
+- **日志管理**: 详细的日志记录和分析，故障排查轻松
+- **安全加固**: 配置验证、权限管理、防火墙集成
 
-🔐 **Security Features**
-- IP-based access control
-- Rate limiting
-- Connection monitoring
-- Secure configuration management
+### 📱 用户友好
+- **小白友好**: 全中文界面，详细的操作提示
+- **多种格式**: 支持链接、二维码、配置文件等多种分享方式
+- **批量操作**: 一键生成所有格式的连接信息
+- **兼容性强**: 支持所有主流 Telegram 客户端
 
-## Quick Start
+## 🚀 快速开始
 
-### 1. Clone and Deploy
-
-```bash
-# Clone the repository
-git clone https://github.com/your-repo/python-mtproxy.git
-cd python-mtproxy
-
-# One-click deployment (requires sudo)
-sudo ./scripts/deploy.sh
-```
-
-### 2. SSH Remote Management
-
-After deployment, you can manage the service remotely via SSH:
+### 方法一：一键安装（推荐）
 
 ```bash
-# Check status
-ssh user@server "mtproxy-cli status"
-
-# View logs in real-time
-ssh user@server "mtproxy-logs --follow"
-
-# Restart service
-ssh user@server "mtproxy-cli restart"
-
-# Health check
-ssh user@server "mtproxy-health"
+# 一行命令完成安装
+bash <(curl -fsSL https://raw.githubusercontent.com/your-repo/mtproxy/main/install.sh)
 ```
 
-### 3. Local Management
-
-On the server, you can use these commands:
+### 方法二：下载安装
 
 ```bash
-# Service control
-mtproxy-cli start|stop|restart|status
+# 下载项目
+git clone https://github.com/your-repo/mtproxy.git
+cd mtproxy
 
-# Configuration
-mtproxy-cli config show
-mtproxy-cli config edit
-
-# Monitoring
-mtproxy-cli health
-mtproxy-cli stats
-
-# Logs
-mtproxy-logs --follow
-mtproxy-logs --level ERROR
-mtproxy-logs --search "connection"
+# 运行安装脚本
+sudo bash install.sh
 ```
 
-## Installation Options
+### 方法三：快速体验
 
-### Production Deployment
 ```bash
-sudo ./scripts/deploy.sh --production
+# 最小化安装（仅用于测试）
+curl -fsSL https://raw.githubusercontent.com/your-repo/mtproxy/main/quick_install.sh | bash
 ```
 
-### Development Deployment
+安装完成后，您将看到：
+
+```
+🎉 MTProxy安装成功!
+
+📋 连接信息:
+服务器: 你的服务器IP
+端口: 8443
+密钥: 生成的32位密钥
+
+🔗 Telegram连接链接:
+tg://proxy?server=你的IP&port=8443&secret=你的密钥
+
+🛠️ 管理命令:
+启动管理面板: mtproxy
+```
+
+## 🎛️ 管理界面
+
+安装完成后，使用 `mtproxy` 命令打开管理面板：
+
 ```bash
-sudo ./scripts/deploy.sh --development
+mtproxy
 ```
 
-### Update Existing Installation
+### 管理界面功能
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║                     MTProxy 管理面板                          ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─ 服务管理 ─────────────────────────────────────────────────┐
+│ 1) 启动服务          2) 停止服务          3) 重启服务        │
+│ 4) 查看状态          5) 查看日志          6) 重新加载配置    │
+├─ 配置管理 ─────────────────────────────────────────────────┤
+│ 7) 修改端口          8) 更换密钥          9) 编辑配置        │
+│ 10) 连接信息         11) 生成二维码       12) 性能优化       │
+├─ 系统管理 ─────────────────────────────────────────────────┤
+│ 13) 更新程序         14) 卸载程序         15) 系统信息       │
+│ 16) 防火墙设置       17) 流量统计         18) 备份还原       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 常用操作
+
+**查看连接信息**
 ```bash
-sudo ./scripts/deploy.sh --update
+# 显示连接信息
+mtproxy
+# 选择 "10) 连接信息"
 ```
 
-### Uninstall
+**生成二维码**
 ```bash
-sudo ./scripts/uninstall.sh
+# 生成连接二维码
+./scripts/connection.sh qr
 ```
 
-## Configuration
+**修改端口**
+```bash
+# 进入管理面板修改端口
+mtproxy
+# 选择 "7) 修改端口"
+```
 
-The main configuration file is located at `/opt/python-mtproxy/config/mtproxy.conf`:
+**更换密钥**
+```bash
+# 进入管理面板更换密钥
+mtproxy
+# 选择 "8) 更换密钥"
+```
+
+## 🔧 高级配置
+
+### 配置文件位置
+
+主配置文件: `/opt/python-mtproxy/config/mtproxy.conf`
 
 ```yaml
-server:
-  host: 0.0.0.0
-  port: 8443
-  secret: your_32_char_secret
-  max_connections: 1000
-  timeout: 300
+# MTProxy Configuration File
 
-logging:
-  level: INFO
-  file: /opt/python-mtproxy/logs/mtproxy.log
-  max_size: 100MB
-  backup_count: 7
+[DEFAULT]
+# 基本配置
+host: 0.0.0.0
+port: 8443
+secret: your_32_char_secret
 
-security:
-  allowed_ips: []
-  banned_ips: []
-  rate_limit: 100
+# 性能配置
+max_connections: 1000
+workers: 4
+timeout: 300
+buffer_size: 16384
+
+# 日志配置
+log_level: INFO
+log_dir: /opt/python-mtproxy/logs
+access_log: True
+error_log: True
+
+# 统计配置
+stats_enabled: True
+stats_port: 8080
+
+# 安全配置
+secure_only: False
+allowed_users: []
 ```
 
-### Environment Variables
+### 端口配置
 
-You can override configuration using environment variables:
+支持的端口配置：
+
+- **443**: HTTPS端口，推荐使用，不易被封锁
+- **8443**: 常用代理端口，默认选择
+- **自定义**: 支持 1-65535 任意端口
+
+### 性能调优
+
+根据服务器配置调整参数：
+
+```yaml
+# 小型服务器 (1核2G)
+max_connections: 500
+workers: 2
+
+# 中型服务器 (2核4G)
+max_connections: 1000
+workers: 4
+
+# 大型服务器 (4核8G+)
+max_connections: 2000
+workers: 8
+```
+
+## 🛠️ 管理工具
+
+### 连接信息生成器
 
 ```bash
-export MTPROXY_PORT=8443
-export MTPROXY_SECRET=your_secret
-export LOG_LEVEL=DEBUG
+# 显示连接信息
+./scripts/connection.sh info
+
+# 生成二维码
+./scripts/connection.sh qr [输出文件]
+
+# 仅输出连接链接
+./scripts/connection.sh link
+
+# 测试连通性
+./scripts/connection.sh test
+
+# 批量生成所有格式
+./scripts/connection.sh batch [输出目录]
 ```
 
-## SSH Management Tools
-
-### Main CLI Tool (`mtproxy-cli`)
+### 系统验证工具
 
 ```bash
-# Service management
-mtproxy-cli start
-mtproxy-cli stop
-mtproxy-cli restart
-mtproxy-cli status
+# 完整系统检查
+./scripts/validate.sh
 
-# Configuration
-mtproxy-cli config show
-mtproxy-cli config edit
-
-# Monitoring
-mtproxy-cli health
-mtproxy-cli stats
+# 检查结果说明:
+# ✅ 通过: 系统正常
+# ⚠️  警告: 建议优化
+# ❌ 失败: 需要修复
 ```
 
-### Log Viewer (`mtproxy-logs`)
+### 本地管理脚本
 
 ```bash
-# Follow logs in real-time
-mtproxy-logs --follow
+# 详细管理功能
+./scripts/manage.sh
 
-# View last 100 lines
-mtproxy-logs --lines 100
-
-# Filter by log level
-mtproxy-logs --level ERROR
-
-# Search for patterns
-mtproxy-logs --search "connection error"
-
-# View logs from specific date
-mtproxy-logs --date today
-mtproxy-logs --date 2024-01-15
+# 快速操作
+systemctl start python-mtproxy    # 启动
+systemctl stop python-mtproxy     # 停止
+systemctl restart python-mtproxy  # 重启
+systemctl status python-mtproxy   # 状态
 ```
 
-### Health Checker (`mtproxy-health`)
+## 📊 监控和诊断
+
+### 服务状态监控
 
 ```bash
-# Full health check
-mtproxy-health
+# 查看服务状态
+mtproxy
+# 选择 "4) 查看状态"
 
-# Network connectivity only
-mtproxy-health --network
-
-# Performance check only
-mtproxy-health --performance
-
-# JSON output
-mtproxy-health --json
+# 或直接使用系统命令
+systemctl status python-mtproxy
 ```
 
-## Directory Structure
-
-```
-/opt/python-mtproxy/
-├── mtproxy/              # Core application code
-├── tools/                # Management tools
-├── config/               # Configuration files
-├── logs/                 # Log files
-├── scripts/              # Deployment scripts
-└── venv/                 # Python virtual environment
-```
-
-## Service Management
-
-### Systemd Service
-
-The service is installed as `python-mtproxy.service`:
+### 日志查看
 
 ```bash
-# Standard systemd commands
-sudo systemctl start python-mtproxy
-sudo systemctl stop python-mtproxy
-sudo systemctl restart python-mtproxy
-sudo systemctl status python-mtproxy
+# 实时日志
+journalctl -u python-mtproxy -f
 
-# Auto-start on boot
-sudo systemctl enable python-mtproxy
-sudo systemctl disable python-mtproxy
+# 错误日志
+journalctl -u python-mtproxy -p err
+
+# 管理面板查看
+mtproxy
+# 选择 "5) 查看日志"
 ```
 
-### Log Files
-
-- **Main log**: `/opt/python-mtproxy/logs/mtproxy.log`
-- **Error log**: `/opt/python-mtproxy/logs/mtproxy-error.log`
-- **Access log**: `/opt/python-mtproxy/logs/mtproxy-access.log`
-
-Logs are automatically rotated daily and compressed.
-
-## Monitoring and Diagnostics
-
-### Health Monitoring
-
-The built-in health checker monitors:
-- Service status
-- Process health
-- Port availability
-- Configuration validity
-- System resources
-- Network connectivity
-- Log file activity
-
-### Statistics
-
-Get detailed statistics:
+### 性能监控
 
 ```bash
-mtproxy-cli stats
-```
+# 系统资源使用
+./scripts/validate.sh
 
-This shows:
-- Active connections
-- Bandwidth usage
-- Uptime
-- Error rates
-- Client information
+# 连接统计
+ss -tlnp | grep :8443
 
-### Performance Monitoring
-
-Monitor system performance:
-
-```bash
-# Resource usage
-mtproxy-health --performance
-
-# Process information
+# 进程信息
 ps aux | grep mtproxy
-
-# Network connections
-netstat -tlnp | grep 8443
 ```
 
-## Security
+## 🔐 安全设置
 
-### Access Control
+### 防火墙配置
 
-Configure IP-based access control in `mtproxy.conf`:
+安装脚本会自动配置防火墙，支持：
+
+- **UFW** (Ubuntu/Debian)
+- **firewalld** (CentOS/RHEL)
+- **iptables** (通用)
+
+手动配置示例：
+
+```bash
+# UFW
+sudo ufw allow 8443/tcp
+
+# firewalld
+sudo firewall-cmd --permanent --add-port=8443/tcp
+sudo firewall-cmd --reload
+
+# iptables
+sudo iptables -I INPUT -p tcp --dport 8443 -j ACCEPT
+```
+
+### 访问控制
+
+在配置文件中设置访问控制：
 
 ```yaml
-security:
-  # Allow only specific IPs
-  allowed_ips:
-    - "192.168.1.0/24"
-    - "10.0.0.1"
-  
-  # Block specific IPs
-  banned_ips:
-    - "1.2.3.4"
-    - "5.6.7.8"
-  
-  # Rate limiting
-  rate_limit: 100
-  max_connections_per_ip: 10
+# 仅允许特定IP
+allowed_users: ["192.168.1.100", "10.0.0.0/24"]
+
+# 连接限制
+max_connections: 1000
+timeout: 300
 ```
 
-### Firewall Configuration
+### 密钥安全
 
-The deployment script automatically configures UFW:
+- 使用32位十六进制随机密钥
+- 定期更换密钥
+- 避免使用简单或重复的密钥
 
+## 🚨 故障排除
+
+### 常见问题
+
+**1. 服务无法启动**
 ```bash
-# Check firewall status
+# 检查日志
+journalctl -u python-mtproxy -n 50
+
+# 验证配置
+./scripts/validate.sh
+
+# 检查端口占用
+ss -tlnp | grep :8443
+```
+
+**2. 连接失败**
+```bash
+# 检查防火墙
 sudo ufw status
+sudo firewall-cmd --list-ports
 
-# Manually configure if needed
-sudo ufw allow 8443/tcp
-sudo ufw allow ssh
+# 测试端口连通性
+telnet 你的服务器IP 8443
+
+# 检查服务状态
+systemctl status python-mtproxy
 ```
 
-### SSL/TLS
+**3. 性能问题**
+```bash
+# 检查系统资源
+./scripts/validate.sh
 
-For additional security, consider running behind a reverse proxy with SSL:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
-    
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    location / {
-        proxy_pass http://127.0.0.1:8443;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+# 调整配置参数
+mtproxy
+# 选择 "9) 编辑配置"
 ```
 
-## Troubleshooting
+### 获取帮助
 
-### Common Issues
-
-1. **Service won't start**
+1. **运行诊断工具**
    ```bash
-   # Check logs
-   mtproxy-logs --level ERROR
+   ./scripts/validate.sh
+   ```
+
+2. **查看详细日志**
+   ```bash
    journalctl -u python-mtproxy -f
-   
-   # Check configuration
-   mtproxy-cli config show
-   
-   # Validate config
-   python3 -m mtproxy.config --validate
    ```
 
-2. **Port binding issues**
+3. **检查系统状态**
    ```bash
-   # Check if port is in use
-   netstat -tlnp | grep 8443
-   
-   # Check firewall
-   sudo ufw status
-   
-   # Test port connectivity
-   nc -zv localhost 8443
+   mtproxy
+   # 选择 "15) 系统信息"
    ```
 
-3. **Permission issues**
-   ```bash
-   # Check file permissions
-   ls -la /opt/python-mtproxy/
-   
-   # Fix permissions
-   sudo chown -R mtproxy:mtproxy /opt/python-mtproxy/
-   ```
+## 📁 目录结构
 
-4. **High resource usage**
-   ```bash
-   # Check system resources
-   mtproxy-health --performance
-   
-   # Monitor process
-   top -p $(pgrep -f mtproxy)
-   
-   # Check connections
-   mtproxy-cli stats
-   ```
+```
+/opt/python-mtproxy/           # 安装目录
+├── mtproxy/                   # 核心程序
+├── config/                    # 配置文件
+│   └── mtproxy.conf          # 主配置文件
+├── logs/                      # 日志文件
+├── scripts/                   # 管理脚本
+│   ├── start.sh              # 启动脚本
+│   ├── stop.sh               # 停止脚本
+│   ├── restart.sh            # 重启脚本
+│   ├── manage.sh             # 管理脚本
+│   ├── validate.sh           # 验证脚本
+│   └── connection.sh         # 连接信息脚本
+└── venv/                      # Python虚拟环境
 
-### Getting Help
+/usr/local/bin/mtproxy         # 全局管理命令
+/etc/systemd/system/python-mtproxy.service  # 系统服务
+```
 
-1. **Check logs first**:
-   ```bash
-   mtproxy-logs --follow
-   mtproxy-logs --level ERROR
-   ```
+## 🔄 更新和卸载
 
-2. **Run health check**:
-   ```bash
-   mtproxy-health
-   ```
-
-3. **Verify configuration**:
-   ```bash
-   mtproxy-cli config show
-   ```
-
-4. **Check system status**:
-   ```bash
-   mtproxy-cli status
-   systemctl status python-mtproxy
-   ```
-
-## Development
-
-### Local Development
+### 更新程序
 
 ```bash
-# Clone repository
-git clone https://github.com/your-repo/python-mtproxy.git
-cd python-mtproxy
+# 自动更新
+mtproxy
+# 选择 "13) 更新程序"
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-# Install in development mode
-pip install -e .
-
-# Run tests
-pytest tests/
-
-# Run linting
-flake8 mtproxy/ tools/ tests/
-black mtproxy/ tools/ tests/
+# 手动更新
+cd /opt/python-mtproxy
+git pull
+sudo ./scripts/restart.sh
 ```
 
-### Contributing
+### 卸载程序
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
+```bash
+# 完全卸载
+sudo ./scripts/uninstall.sh
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Telegram Connection
-
-After successful deployment, you'll get connection information:
-
-```
-Server: YOUR_SERVER_IP
-Port: 8443
-Secret: your_generated_secret
-
-Telegram Link:
-tg://proxy?server=YOUR_SERVER_IP&port=8443&secret=your_generated_secret
+# 或使用管理面板
+mtproxy
+# 选择 "14) 卸载程序"
 ```
 
-Use this link in Telegram to connect through your proxy.
+## 💝 支持项目
 
-## Support
+如果这个项目对您有帮助，请考虑：
 
-- **Documentation**: Check this README and inline code documentation
-- **Issues**: Report bugs and request features on GitHub
-- **Logs**: Always check logs first for troubleshooting
-- **Health Check**: Use `mtproxy-health` for system diagnostics
+- ⭐ 给项目点个星星
+- 🐛 报告问题和建议
+- 🔧 提交代码改进
+- 📢 分享给其他人
+
+## 📜 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+## 🔗 相关链接
+
+- **项目主页**: https://github.com/your-repo/mtproxy
+- **问题反馈**: https://github.com/your-repo/mtproxy/issues
+- **文档中心**: https://github.com/your-repo/mtproxy/wiki
+- **更新日志**: https://github.com/your-repo/mtproxy/releases
+
+---
+
+**快速安装命令**
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/your-repo/mtproxy/main/install.sh)
+```
+
+安装完成后使用 `mtproxy` 命令进入管理界面！
