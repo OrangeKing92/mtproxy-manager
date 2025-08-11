@@ -107,11 +107,11 @@ get_connection_info() {
     local server_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || curl -s -m 5 ipinfo.io/ip 2>/dev/null || echo "获取失败")
     local server_ipv6=$(curl -s -m 5 -6 ifconfig.me 2>/dev/null || echo "")
     
-    # 读取配置信息
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local tls_secret=$(grep "^tls_secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local fake_domain=$(grep "^fake_domain:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    # 读取配置信息 (兼容YAML嵌套格式)
+    local port=$(grep -A1 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' "')
+    local secret=$(grep -A20 "^server:" $CONFIG_FILE | grep "secret:" | head -1 | cut -d: -f2 | tr -d ' "')
+    local tls_secret=$(grep -A20 "^server:" $CONFIG_FILE | grep "tls_secret:" | cut -d: -f2 | tr -d ' "')
+    local fake_domain=$(grep -A20 "^server:" $CONFIG_FILE | grep "fake_domain:" | cut -d: -f2 | tr -d ' "')
     
     if [[ -z $port || -z $secret ]]; then
         print_error "无法读取配置信息"
@@ -217,8 +217,8 @@ generate_tls_secret() {
     print_info "正在生成TLS密钥..."
     
     # 读取当前配置
-    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local fake_domain=$(grep "^fake_domain:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "' || echo "www.cloudflare.com")
+    local secret=$(grep -A20 "^server:" $CONFIG_FILE | grep "secret:" | head -1 | cut -d: -f2 | tr -d ' "')
+    local fake_domain=$(grep -A20 "^server:" $CONFIG_FILE | grep "fake_domain:" | cut -d: -f2 | tr -d ' "' || echo "www.cloudflare.com")
     
     if [[ -z "$secret" ]]; then
         print_error "无法读取基础密钥"
@@ -240,18 +240,20 @@ generate_tls_secret() {
     # 生成TLS密钥 (格式: dd + 原密钥 + 域名长度 + 域名hex)
     local tls_secret="dd${secret}${domain_length_hex}${domain_hex}"
     
-    # 更新配置文件
-    if grep -q "^tls_secret:" $CONFIG_FILE; then
+    # 更新配置文件 (YAML格式)
+    if grep -A20 "^server:" $CONFIG_FILE | grep -q "tls_secret:"; then
         # 更新现有TLS密钥
-        sed -i "s/^tls_secret:.*/tls_secret: $tls_secret/" $CONFIG_FILE
+        sed -i "/^server:/,/^[a-zA-Z]/ s/^  tls_secret:.*/  tls_secret: $tls_secret/" $CONFIG_FILE
     else
-        # 添加TLS密钥到配置文件
-        sed -i "/^secret: $secret/a tls_secret: $tls_secret" $CONFIG_FILE
+        # 在server section中添加TLS密钥
+        sed -i "/^server:/,/^[a-zA-Z]/ { /^  secret:/a\\  tls_secret: $tls_secret
+        }" $CONFIG_FILE
     fi
     
     # 确保fake_domain存在
-    if ! grep -q "^fake_domain:" $CONFIG_FILE; then
-        sed -i "/^tls_secret: $tls_secret/a fake_domain: $fake_domain" $CONFIG_FILE
+    if ! grep -A20 "^server:" $CONFIG_FILE | grep -q "fake_domain:"; then
+        sed -i "/^server:/,/^[a-zA-Z]/ { /^  tls_secret:/a\\  fake_domain: $fake_domain
+        }" $CONFIG_FILE
     fi
     
     print_success "TLS密钥生成完成"
@@ -280,10 +282,10 @@ copy_connection_links() {
     # 获取服务器IP
     local server_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || curl -s -m 5 ipinfo.io/ip 2>/dev/null || echo "获取失败")
     
-    # 读取配置信息
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local tls_secret=$(grep "^tls_secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    # 读取配置信息 (兼容YAML嵌套格式)
+    local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' "')
+    local secret=$(grep -A20 "^server:" $CONFIG_FILE | grep "secret:" | head -1 | cut -d: -f2 | tr -d ' "')
+    local tls_secret=$(grep -A20 "^server:" $CONFIG_FILE | grep "tls_secret:" | cut -d: -f2 | tr -d ' "')
     
     if [[ -z $port || -z $secret ]]; then
         print_error "无法读取配置信息"
@@ -393,7 +395,7 @@ show_detailed_status() {
     
     echo ""
     echo -e "${CYAN}═══ 端口监听状态 ═══${NC}"
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
     if ss -tlnp | grep ":$port "; then
         print_success "端口 $port 正在监听"
     else
@@ -468,7 +470,7 @@ disable_autostart() {
 }
 
 change_port() {
-    local current_port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    local current_port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
     echo -e "${CYAN}当前端口: $current_port${NC}"
     echo ""
     
@@ -504,7 +506,7 @@ change_port() {
         cp $CONFIG_FILE "$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
         
         # 修改配置文件
-        sed -i "s/^port: .*/port: $new_port/" $CONFIG_FILE
+        sed -i "/^server:/,/^[a-zA-Z]/ s/^  port: .*/  port: $new_port/" $CONFIG_FILE
         print_success "端口已修改为: $new_port"
         
         # 重启服务
@@ -523,7 +525,7 @@ change_port() {
 }
 
 change_secret() {
-    local current_secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    local current_secret=$(grep -A20 "^server:" $CONFIG_FILE | grep "secret:" | head -1 | cut -d: -f2 | tr -d ' ')
     echo -e "${CYAN}当前密钥: $current_secret${NC}"
     echo ""
     
@@ -569,7 +571,7 @@ change_secret() {
     cp $CONFIG_FILE "$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
     
     # 修改配置文件
-    sed -i "s/^secret: .*/secret: $new_secret/" $CONFIG_FILE
+    sed -i "/^server:/,/^[a-zA-Z]/ s/^  secret: .*/  secret: $new_secret/" $CONFIG_FILE
     print_success "密钥已更新"
     
     # 重启服务
@@ -624,7 +626,7 @@ validate_config() {
         return 1
     fi
     
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
     local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
     
     if [[ -z $port || ! $port =~ ^[0-9]+$ ]]; then
@@ -645,7 +647,7 @@ generate_qr_code() {
     print_info "正在生成连接二维码..."
     
     local server_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || echo "获取IP失败")
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
     local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
     
     if [[ $server_ip == "获取IP失败" ]]; then
