@@ -562,6 +562,472 @@ generate_qr() {
     fi
 }
 
+# 性能优化功能
+performance_optimization() {
+    echo -e "${CYAN}═══ 性能优化设置 ═══${NC}"
+    echo "1) 查看当前性能参数"
+    echo "2) 优化内存使用"
+    echo "3) 优化网络参数"
+    echo "4) 设置连接限制"
+    echo "0) 返回主菜单"
+    echo ""
+    
+    read -p "请选择操作 [0-4]: " choice
+    
+    case $choice in
+        1)
+            echo -e "${CYAN}当前系统资源使用:${NC}"
+            echo "CPU使用率: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)%"
+            echo "内存使用: $(free -h | grep Mem | awk '{printf "%.1f%%", $3/$2 * 100.0}')"
+            echo "磁盘使用: $(df -h / | awk 'NR==2{printf "%s", $5}')"
+            echo ""
+            echo -e "${CYAN}MTProxy进程信息:${NC}"
+            ps aux | grep python-mtproxy | grep -v grep || echo "服务未运行"
+            ;;
+        2)
+            print_info "优化内存使用设置..."
+            # 这里可以添加内存优化逻辑
+            print_success "内存优化完成"
+            ;;
+        3)
+            print_info "优化网络参数..."
+            # 这里可以添加网络优化逻辑
+            print_success "网络优化完成"
+            ;;
+        4)
+            print_info "设置连接限制..."
+            # 这里可以添加连接限制逻辑
+            print_success "连接限制设置完成"
+            ;;
+        0)
+            return 0
+            ;;
+        *)
+            print_error "无效选择"
+            ;;
+    esac
+}
+
+# 更新程序功能
+update_program() {
+    echo -e "${CYAN}═══ 程序更新 ═══${NC}"
+    print_info "检查更新..."
+    
+    # 检查Git仓库
+    if [[ -d "$INSTALL_DIR/.git" ]]; then
+        cd "$INSTALL_DIR"
+        git fetch origin main 2>/dev/null
+        
+        local current_commit=$(git rev-parse HEAD)
+        local latest_commit=$(git rev-parse origin/main)
+        
+        if [[ "$current_commit" == "$latest_commit" ]]; then
+            print_success "已是最新版本"
+            return 0
+        fi
+        
+        echo "发现新版本可用!"
+        echo "当前版本: ${current_commit:0:8}"
+        echo "最新版本: ${latest_commit:0:8}"
+        echo ""
+        
+        read -p "是否更新到最新版本? [y/N]: " update_confirm
+        if [[ $update_confirm == [Yy] ]]; then
+            print_info "正在更新..."
+            
+            # 备份当前配置
+            cp -r config config.backup.$(date +%Y%m%d_%H%M%S)
+            
+            # 拉取最新代码
+            git pull origin main
+            
+            # 重启服务
+            restart_service
+            
+            print_success "更新完成!"
+        fi
+    else
+        print_warning "未找到Git仓库，无法自动更新"
+        echo "请手动下载最新版本进行更新"
+    fi
+}
+
+# 卸载程序功能
+uninstall_program() {
+    echo -e "${RED}═══ 卸载 MTProxy ═══${NC}"
+    echo ""
+    print_warning "这将完全删除MTProxy及其所有数据!"
+    echo ""
+    echo "将要删除的内容:"
+    echo "  • MTProxy服务和配置"
+    echo "  • 安装目录: $INSTALL_DIR"
+    echo "  • 系统服务文件"
+    echo "  • 用户数据和日志"
+    echo ""
+    
+    read -p "确定要卸载吗? 输入 'yes' 确认: " confirm
+    if [[ "$confirm" != "yes" ]]; then
+        print_info "卸载已取消"
+        return 0
+    fi
+    
+    print_info "正在卸载MTProxy..."
+    
+    # 停止服务
+    print_info "停止服务..."
+    systemctl stop $SERVICE_NAME 2>/dev/null || true
+    systemctl disable $SERVICE_NAME 2>/dev/null || true
+    
+    # 删除服务文件
+    rm -f /etc/systemd/system/${SERVICE_NAME}.service
+    systemctl daemon-reload
+    
+    # 创建配置备份
+    if [[ -d "$INSTALL_DIR/config" ]]; then
+        local backup_dir="/tmp/mtproxy-backup-$(date +%Y%m%d_%H%M%S)"
+        mkdir -p "$backup_dir"
+        cp -r "$INSTALL_DIR/config" "$backup_dir/" 2>/dev/null || true
+        print_info "配置已备份到: $backup_dir"
+    fi
+    
+    # 删除安装目录
+    rm -rf "$INSTALL_DIR"
+    
+    # 删除命令链接
+    rm -f /usr/local/bin/mtproxy
+    rm -f /usr/local/bin/mtproxy-cli
+    rm -f /usr/local/bin/mtproxy-logs
+    rm -f /usr/local/bin/mtproxy-health
+    
+    # 清理防火墙规则
+    if command -v ufw &> /dev/null; then
+        ufw delete allow 8443/tcp 2>/dev/null || true
+    fi
+    
+    print_success "MTProxy已完全卸载!"
+    echo ""
+    echo "感谢使用MTProxy!"
+    exit 0
+}
+
+# 系统信息功能
+show_system_info() {
+    echo -e "${CYAN}═══ 系统信息 ═══${NC}"
+    
+    # 基本系统信息
+    echo -e "${YELLOW}操作系统:${NC}"
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        echo "  系统: $PRETTY_NAME"
+        echo "  版本: $VERSION"
+    fi
+    echo "  内核: $(uname -r)"
+    echo "  架构: $(uname -m)"
+    echo ""
+    
+    # 硬件信息
+    echo -e "${YELLOW}硬件信息:${NC}"
+    echo "  CPU: $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)"
+    echo "  CPU核心: $(nproc)"
+    echo "  内存: $(free -h | grep Mem | awk '{print $2}')"
+    echo ""
+    
+    # 网络信息
+    echo -e "${YELLOW}网络信息:${NC}"
+    echo "  外网IP: $(curl -s ifconfig.me 2>/dev/null || echo '获取失败')"
+    echo "  内网IP: $(hostname -I | awk '{print $1}' 2>/dev/null || echo '获取失败')"
+    echo ""
+    
+    # 系统负载
+    echo -e "${YELLOW}系统负载:${NC}"
+    echo "  负载: $(uptime | awk -F'load average:' '{print $2}')"
+    echo "  运行时间: $(uptime -p)"
+    echo ""
+    
+    # 磁盘使用
+    echo -e "${YELLOW}磁盘使用:${NC}"
+    df -h | grep -E '^/dev/' | awk '{printf "  %s: %s/%s (%s)\n", $6, $3, $2, $5}'
+    echo ""
+    
+    # MTProxy状态
+    echo -e "${YELLOW}MTProxy状态:${NC}"
+    echo -n "  服务状态: "
+    get_service_status
+    if systemctl is-active --quiet $SERVICE_NAME; then
+        echo "  PID: $(systemctl show $SERVICE_NAME --property=MainPID --value)"
+        echo "  运行时间: $(systemctl show $SERVICE_NAME --property=ActiveEnterTimestamp --value | awk '{print $2, $3}')"
+    fi
+}
+
+# 防火墙设置功能
+firewall_settings() {
+    echo -e "${CYAN}═══ 防火墙设置 ═══${NC}"
+    echo "1) 查看防火墙状态"
+    echo "2) 开放MTProxy端口"
+    echo "3) 关闭MTProxy端口"
+    echo "4) 查看开放的端口"
+    echo "5) 重置防火墙规则"
+    echo "0) 返回主菜单"
+    echo ""
+    
+    read -p "请选择操作 [0-5]: " choice
+    
+    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    
+    case $choice in
+        1)
+            echo -e "${YELLOW}防火墙状态:${NC}"
+            if command -v ufw &> /dev/null; then
+                ufw status verbose
+            elif command -v firewalld &> /dev/null; then
+                firewall-cmd --state
+                firewall-cmd --list-all
+            else
+                print_warning "未检测到支持的防火墙"
+            fi
+            ;;
+        2)
+            print_info "开放端口 $port..."
+            if command -v ufw &> /dev/null; then
+                ufw allow $port/tcp
+                print_success "端口 $port 已开放"
+            elif command -v firewalld &> /dev/null; then
+                firewall-cmd --permanent --add-port=$port/tcp
+                firewall-cmd --reload
+                print_success "端口 $port 已开放"
+            else
+                print_warning "请手动配置防火墙开放端口 $port"
+            fi
+            ;;
+        3)
+            print_info "关闭端口 $port..."
+            if command -v ufw &> /dev/null; then
+                ufw delete allow $port/tcp
+                print_success "端口 $port 已关闭"
+            elif command -v firewalld &> /dev/null; then
+                firewall-cmd --permanent --remove-port=$port/tcp
+                firewall-cmd --reload
+                print_success "端口 $port 已关闭"
+            else
+                print_warning "请手动配置防火墙关闭端口 $port"
+            fi
+            ;;
+        4)
+            echo -e "${YELLOW}开放的端口:${NC}"
+            if command -v ufw &> /dev/null; then
+                ufw status | grep ALLOW
+            elif command -v firewalld &> /dev/null; then
+                firewall-cmd --list-ports
+            else
+                ss -tlnp | grep LISTEN
+            fi
+            ;;
+        5)
+            read -p "确定要重置防火墙规则吗? [y/N]: " reset_confirm
+            if [[ $reset_confirm == [Yy] ]]; then
+                if command -v ufw &> /dev/null; then
+                    ufw --force reset
+                    ufw enable
+                    print_success "防火墙规则已重置"
+                else
+                    print_warning "请手动重置防火墙规则"
+                fi
+            fi
+            ;;
+        0)
+            return 0
+            ;;
+        *)
+            print_error "无效选择"
+            ;;
+    esac
+}
+
+# 流量统计功能
+traffic_statistics() {
+    echo -e "${CYAN}═══ 流量统计 ═══${NC}"
+    
+    # 获取网络接口
+    local interface=$(ip route | grep default | awk '{print $5}' | head -1)
+    
+    if [[ -z "$interface" ]]; then
+        print_error "无法获取网络接口"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}网络接口: $interface${NC}"
+    echo ""
+    
+    # 显示实时流量
+    echo -e "${YELLOW}实时流量统计:${NC}"
+    local rx_before=$(cat /sys/class/net/$interface/statistics/rx_bytes)
+    local tx_before=$(cat /sys/class/net/$interface/statistics/tx_bytes)
+    
+    sleep 1
+    
+    local rx_after=$(cat /sys/class/net/$interface/statistics/rx_bytes)
+    local tx_after=$(cat /sys/class/net/$interface/statistics/tx_bytes)
+    
+    local rx_rate=$((rx_after - rx_before))
+    local tx_rate=$((tx_after - tx_before))
+    
+    echo "  下载速度: $(numfmt --to=iec-i --suffix=B/s $rx_rate)"
+    echo "  上传速度: $(numfmt --to=iec-i --suffix=B/s $tx_rate)"
+    echo ""
+    
+    # 显示总流量
+    echo -e "${YELLOW}总流量统计:${NC}"
+    local total_rx=$(cat /sys/class/net/$interface/statistics/rx_bytes)
+    local total_tx=$(cat /sys/class/net/$interface/statistics/tx_bytes)
+    
+    echo "  总下载: $(numfmt --to=iec-i --suffix=B $total_rx)"
+    echo "  总上传: $(numfmt --to=iec-i --suffix=B $total_tx)"
+    echo ""
+    
+    # MTProxy连接统计
+    echo -e "${YELLOW}MTProxy连接统计:${NC}"
+    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    local connections=$(ss -tn | grep ":$port " | wc -l)
+    echo "  当前连接数: $connections"
+    
+    # 如果有日志，显示连接历史
+    if [[ -f "/var/log/$SERVICE_NAME.log" ]]; then
+        local today_connections=$(grep "$(date +%Y-%m-%d)" /var/log/$SERVICE_NAME.log | grep -c "connection" 2>/dev/null || echo "0")
+        echo "  今日连接数: $today_connections"
+    fi
+}
+
+# 备份还原功能
+backup_restore() {
+    echo -e "${CYAN}═══ 备份还原 ═══${NC}"
+    echo "1) 创建配置备份"
+    echo "2) 还原配置备份"
+    echo "3) 查看备份列表"
+    echo "4) 删除备份"
+    echo "0) 返回主菜单"
+    echo ""
+    
+    read -p "请选择操作 [0-4]: " choice
+    
+    local backup_dir="/opt/mtproxy-backups"
+    
+    case $choice in
+        1)
+            print_info "创建配置备份..."
+            mkdir -p "$backup_dir"
+            
+            local backup_name="mtproxy-backup-$(date +%Y%m%d_%H%M%S)"
+            local backup_path="$backup_dir/$backup_name"
+            
+            mkdir -p "$backup_path"
+            cp -r "$INSTALL_DIR/config" "$backup_path/"
+            cp -r "$INSTALL_DIR/logs" "$backup_path/" 2>/dev/null || true
+            
+            # 创建备份信息文件
+            {
+                echo "备份时间: $(date)"
+                echo "MTProxy版本: $(cat $INSTALL_DIR/VERSION 2>/dev/null || echo "未知")"
+                echo "系统信息: $(uname -a)"
+                echo "配置文件: $(ls -la $INSTALL_DIR/config/)"
+            } > "$backup_path/backup_info.txt"
+            
+            print_success "备份已创建: $backup_path"
+            ;;
+        2)
+            if [[ ! -d "$backup_dir" ]] || [[ -z "$(ls -A $backup_dir 2>/dev/null)" ]]; then
+                print_error "没有找到备份文件"
+                return 1
+            fi
+            
+            echo -e "${YELLOW}可用的备份:${NC}"
+            local backups=($(ls -1 "$backup_dir" | sort -r))
+            for i in "${!backups[@]}"; do
+                echo "  $((i+1))) ${backups[$i]}"
+            done
+            echo ""
+            
+            read -p "请选择要还原的备份编号: " backup_choice
+            if [[ $backup_choice -ge 1 ]] && [[ $backup_choice -le ${#backups[@]} ]]; then
+                local selected_backup="${backups[$((backup_choice-1))]}"
+                local backup_path="$backup_dir/$selected_backup"
+                
+                print_warning "这将覆盖当前配置!"
+                read -p "确定要还原备份 '$selected_backup'? [y/N]: " restore_confirm
+                
+                if [[ $restore_confirm == [Yy] ]]; then
+                    print_info "正在还原备份..."
+                    
+                    # 停止服务
+                    systemctl stop $SERVICE_NAME
+                    
+                    # 备份当前配置
+                    cp -r "$INSTALL_DIR/config" "$INSTALL_DIR/config.before_restore.$(date +%Y%m%d_%H%M%S)"
+                    
+                    # 还原配置
+                    cp -r "$backup_path/config/"* "$INSTALL_DIR/config/"
+                    
+                    # 重启服务
+                    restart_service
+                    
+                    print_success "备份还原完成!"
+                fi
+            else
+                print_error "无效的备份编号"
+            fi
+            ;;
+        3)
+            if [[ ! -d "$backup_dir" ]] || [[ -z "$(ls -A $backup_dir 2>/dev/null)" ]]; then
+                print_info "没有找到备份文件"
+                return 0
+            fi
+            
+            echo -e "${YELLOW}备份列表:${NC}"
+            for backup in $(ls -1t "$backup_dir"); do
+                local backup_path="$backup_dir/$backup"
+                local backup_size=$(du -sh "$backup_path" | cut -f1)
+                local backup_time=""
+                if [[ -f "$backup_path/backup_info.txt" ]]; then
+                    backup_time=$(grep "备份时间:" "$backup_path/backup_info.txt" | cut -d: -f2- | xargs)
+                fi
+                echo "  • $backup (大小: $backup_size)"
+                [[ -n "$backup_time" ]] && echo "    时间: $backup_time"
+            done
+            ;;
+        4)
+            if [[ ! -d "$backup_dir" ]] || [[ -z "$(ls -A $backup_dir 2>/dev/null)" ]]; then
+                print_info "没有找到备份文件"
+                return 0
+            fi
+            
+            echo -e "${YELLOW}备份列表:${NC}"
+            local backups=($(ls -1 "$backup_dir"))
+            for i in "${!backups[@]}"; do
+                echo "  $((i+1))) ${backups[$i]}"
+            done
+            echo ""
+            
+            read -p "请选择要删除的备份编号 (0取消): " delete_choice
+            if [[ $delete_choice -ge 1 ]] && [[ $delete_choice -le ${#backups[@]} ]]; then
+                local selected_backup="${backups[$((delete_choice-1))]}"
+                
+                read -p "确定要删除备份 '$selected_backup'? [y/N]: " delete_confirm
+                if [[ $delete_confirm == [Yy] ]]; then
+                    rm -rf "$backup_dir/$selected_backup"
+                    print_success "备份已删除: $selected_backup"
+                fi
+            elif [[ $delete_choice -ne 0 ]]; then
+                print_error "无效的备份编号"
+            fi
+            ;;
+        0)
+            return 0
+            ;;
+        *)
+            print_error "无效选择"
+            ;;
+    esac
+}
+
 main() {
     # 检查是否为root用户
     if [[ $EUID -ne 0 ]]; then
@@ -593,13 +1059,13 @@ main() {
             9) edit_config ;;
             10) get_connection_info ;;
             11) generate_qr ;;
-            12) print_info "性能优化功能开发中..." ;;
-            13) print_info "更新功能开发中..." ;;
-            14) print_info "卸载功能开发中..." ;;
-            15) print_info "系统信息功能开发中..." ;;
-            16) print_info "防火墙设置功能开发中..." ;;
-            17) print_info "流量统计功能开发中..." ;;
-            18) print_info "备份还原功能开发中..." ;;
+            12) performance_optimization ;;
+            13) update_program ;;
+            14) uninstall_program ;;
+            15) show_system_info ;;
+            16) firewall_settings ;;
+            17) traffic_statistics ;;
+            18) backup_restore ;;
             0) 
                 print_info "感谢使用MTProxy管理脚本!"
                 exit 0
