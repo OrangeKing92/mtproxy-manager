@@ -1,12 +1,8 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -31,14 +27,9 @@ MANIFEST
 *.manifest
 *.spec
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
 # Unit test / coverage reports
 htmlcov/
 .tox/
-.nox/
 .coverage
 .coverage.*
 .cache
@@ -49,7 +40,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Virtual environments
+# Environments
 .env
 .venv
 env/
@@ -58,7 +49,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -74,17 +65,74 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Project specific
-config/mtproxy.conf
+# Logs
+*.log
 logs/*.log
-logs/archive/
-data/
+/logs/*
+!/logs/.gitkeep
+
+# Runtime data
 *.pid
-*.sock
-secret.txt
+*.seed
+*.pid.lock
+
+# Config files with sensitive data
+config/mtproxy.conf.local
+config/production.conf
+config/secrets.yml
+*.secret
+*.key
+*.pem
+*.p12
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
 
 # Temporary files
 *.tmp
 *.temp
-*.bak
-*.backup
+.tmp/
+.temp/
+
+# Data directories
+data/
+/data/*
+!/data/.gitkeep
+
+# Installation logs
+install.log
+setup.log
+deploy.log
+
+# Runtime files
+*.socket
+*.lock
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Local development
+local/
+local.py
+test_config.py
+debug.py
+
+# Sensitive information patterns
+*password*
+*secret*
+*private*
+*credential*
+*token*
+*api_key*
+
+# Project specific
+mtproxy.service
+systemd/
+/opt/
+/etc/mtproxy/
+user_config.yml
+production.yml
