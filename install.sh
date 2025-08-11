@@ -397,17 +397,108 @@ get_connection_info() {
         return 1
     fi
     
-    local server_ip=$(curl -s ifconfig.me 2>/dev/null || echo "获取失败")
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
-    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    print_info "正在获取服务器信息..."
     
-    echo -e "${CYAN}连接信息:${NC}"
-    echo "服务器: $server_ip"
-    echo "端口: $port"
-    echo "密钥: $secret"
-    echo ""
-    echo -e "${CYAN}Telegram连接链接:${NC}"
-    echo "tg://proxy?server=$server_ip&port=$port&secret=$secret"
+    # 获取服务器IP (支持IPv4和IPv6)
+    local server_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || curl -s -m 5 ipinfo.io/ip 2>/dev/null || echo "获取失败")
+    local server_ipv6=$(curl -s -m 5 -6 ifconfig.me 2>/dev/null || echo "")
+    
+    # 读取配置信息
+    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local tls_secret=$(grep "^tls_secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local fake_domain=$(grep "^fake_domain:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    
+    if [[ -z $port || -z $secret ]]; then
+        print_error "无法读取配置信息"
+        return 1
+    fi
+    
+    # 显示连接信息
+    echo
+    echo "=================================================="
+    echo "📱 MTProxy 连接信息"
+    echo "=================================================="
+    
+    echo -e "${CYAN}🌐 服务器信息:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo "IPv4地址: ${GREEN}$server_ip${NC}"
+    if [[ -n "$server_ipv6" ]]; then
+        echo "IPv6地址: ${GREEN}$server_ipv6${NC}"
+    fi
+    echo "端口号:   ${GREEN}$port${NC}"
+    echo "基础密钥: ${GREEN}$secret${NC}"
+    if [[ -n "$tls_secret" && "$tls_secret" != "auto_generate" ]]; then
+        echo "TLS密钥:  ${GREEN}$tls_secret${NC}"
+    fi
+    if [[ -n "$fake_domain" ]]; then
+        echo "伪装域名: ${GREEN}$fake_domain${NC}"
+    fi
+    
+    echo
+    echo -e "${CYAN}📱 Telegram代理链接:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo -e "${YELLOW}普通模式:${NC}"
+    echo "https://t.me/proxy?server=$server_ip&port=$port&secret=$secret"
+    
+    if [[ -n "$tls_secret" && "$tls_secret" != "auto_generate" ]]; then
+        echo -e "${YELLOW}TLS模式 (推荐):${NC}"
+        echo "https://t.me/proxy?server=$server_ip&port=$port&secret=$tls_secret"
+    fi
+    
+    echo
+    echo -e "${CYAN}📋 手动配置参数:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo "服务器地址: $server_ip"
+    echo "端口号:     $port"
+    echo "密钥:       $secret"
+    if [[ -n "$tls_secret" && "$tls_secret" != "auto_generate" ]]; then
+        echo "TLS密钥:    $tls_secret"
+    fi
+    
+    echo
+    echo -e "${CYAN}💡 使用说明:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo "1. 复制上面的任一代理链接"
+    echo "2. 在Telegram中打开链接"
+    echo "3. 点击'连接代理'即可使用"
+    echo "4. 推荐使用TLS模式，连接更稳定"
+    
+    # 检查服务状态
+    echo
+    echo -e "${CYAN}🔧 服务状态检查:${NC}"
+    echo "─────────────────────────────────────────────────"
+    if systemctl is-active --quiet $SERVICE_NAME; then
+        echo -e "服务状态: ${GREEN}✓ 运行中${NC}"
+    else
+        echo -e "服务状态: ${RED}✗ 未运行${NC}"
+    fi
+    
+    # 检查端口监听
+    if command -v netstat >/dev/null 2>&1; then
+        if netstat -tlnp 2>/dev/null | grep -q ":$port "; then
+            echo -e "端口状态: ${GREEN}✓ 监听中${NC}"
+        else
+            echo -e "端口状态: ${RED}✗ 未监听${NC}"
+        fi
+    elif command -v ss >/dev/null 2>&1; then
+        if ss -tlnp 2>/dev/null | grep -q ":$port "; then
+            echo -e "端口状态: ${GREEN}✓ 监听中${NC}"
+        else
+            echo -e "端口状态: ${RED}✗ 未监听${NC}"
+        fi
+    fi
+    
+    # 连通性测试
+    if command -v nc >/dev/null 2>&1; then
+        if timeout 3 nc -z localhost "$port" 2>/dev/null; then
+            echo -e "连通性:   ${GREEN}✓ 可访问${NC}"
+        else
+            echo -e "连通性:   ${RED}✗ 不可访问${NC}"
+        fi
+    fi
+    
+    echo "=================================================="
 }
 
 start_service() {

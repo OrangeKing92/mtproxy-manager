@@ -101,30 +101,222 @@ get_connection_info() {
         return 1
     fi
     
+    print_info "正在获取服务器信息..."
+    
+    # 获取服务器IP (支持IPv4和IPv6)
     local server_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || curl -s -m 5 ipinfo.io/ip 2>/dev/null || echo "获取失败")
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
-    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    local server_ipv6=$(curl -s -m 5 -6 ifconfig.me 2>/dev/null || echo "")
+    
+    # 读取配置信息
+    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local tls_secret=$(grep "^tls_secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local fake_domain=$(grep "^fake_domain:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
     
     if [[ -z $port || -z $secret ]]; then
         print_error "无法读取配置信息"
         return 1
     fi
     
-    echo -e "${CYAN}服务器信息:${NC}"
-    echo "IP地址: $server_ip"
-    echo "端口: $port"
-    echo "密钥: $secret"
-    echo ""
-    echo -e "${CYAN}连接链接:${NC}"
-    local link="tg://proxy?server=$server_ip&port=$port&secret=$secret"
-    echo "$link"
+    # 显示连接信息
+    echo
+    echo "=================================================="
+    echo "📱 MTProxy 连接信息"
+    echo "=================================================="
     
-    # 生成短链接格式（可选）
-    echo ""
-    echo -e "${CYAN}手动设置参数:${NC}"
-    echo "服务器: $server_ip"
-    echo "端口: $port"
-    echo "密钥: $secret"
+    echo -e "${CYAN}🌐 服务器信息:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo "IPv4地址: ${GREEN}$server_ip${NC}"
+    if [[ -n "$server_ipv6" ]]; then
+        echo "IPv6地址: ${GREEN}$server_ipv6${NC}"
+    fi
+    echo "端口号:   ${GREEN}$port${NC}"
+    echo "基础密钥: ${GREEN}$secret${NC}"
+    if [[ -n "$tls_secret" && "$tls_secret" != "auto_generate" ]]; then
+        echo "TLS密钥:  ${GREEN}$tls_secret${NC}"
+    fi
+    if [[ -n "$fake_domain" ]]; then
+        echo "伪装域名: ${GREEN}$fake_domain${NC}"
+    fi
+    
+    echo
+    echo -e "${CYAN}📱 Telegram代理链接:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo -e "${YELLOW}普通模式:${NC}"
+    echo "https://t.me/proxy?server=$server_ip&port=$port&secret=$secret"
+    
+    if [[ -n "$tls_secret" && "$tls_secret" != "auto_generate" ]]; then
+        echo -e "${YELLOW}TLS模式 (推荐):${NC}"
+        echo "https://t.me/proxy?server=$server_ip&port=$port&secret=$tls_secret"
+    fi
+    
+    echo
+    echo -e "${CYAN}📋 手动配置参数:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo "服务器地址: $server_ip"
+    echo "端口号:     $port"
+    echo "密钥:       $secret"
+    if [[ -n "$tls_secret" && "$tls_secret" != "auto_generate" ]]; then
+        echo "TLS密钥:    $tls_secret"
+    fi
+    
+    echo
+    echo -e "${CYAN}💡 使用说明:${NC}"
+    echo "─────────────────────────────────────────────────"
+    echo "1. 复制上面的任一代理链接"
+    echo "2. 在Telegram中打开链接"
+    echo "3. 点击'连接代理'即可使用"
+    echo "4. 推荐使用TLS模式，连接更稳定"
+    
+    # 检查服务状态
+    echo
+    echo -e "${CYAN}🔧 服务状态检查:${NC}"
+    echo "─────────────────────────────────────────────────"
+    if systemctl is-active --quiet python-mtproxy; then
+        echo -e "服务状态: ${GREEN}✓ 运行中${NC}"
+    else
+        echo -e "服务状态: ${RED}✗ 未运行${NC}"
+    fi
+    
+    # 检查端口监听
+    if command -v netstat >/dev/null 2>&1; then
+        if netstat -tlnp 2>/dev/null | grep -q ":$port "; then
+            echo -e "端口状态: ${GREEN}✓ 监听中${NC}"
+        else
+            echo -e "端口状态: ${RED}✗ 未监听${NC}"
+        fi
+    elif command -v ss >/dev/null 2>&1; then
+        if ss -tlnp 2>/dev/null | grep -q ":$port "; then
+            echo -e "端口状态: ${GREEN}✓ 监听中${NC}"
+        else
+            echo -e "端口状态: ${RED}✗ 未监听${NC}"
+        fi
+    fi
+    
+    # 连通性测试
+    if command -v nc >/dev/null 2>&1; then
+        if timeout 3 nc -z localhost "$port" 2>/dev/null; then
+            echo -e "连通性:   ${GREEN}✓ 可访问${NC}"
+        else
+            echo -e "连通性:   ${RED}✗ 不可访问${NC}"
+        fi
+    fi
+    
+    echo "=================================================="
+    
+    return 0
+}
+
+# 生成或更新TLS密钥
+generate_tls_secret() {
+    if [[ ! -f $CONFIG_FILE ]]; then
+        print_error "配置文件不存在: $CONFIG_FILE"
+        return 1
+    fi
+    
+    print_info "正在生成TLS密钥..."
+    
+    # 读取当前配置
+    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local fake_domain=$(grep "^fake_domain:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "' || echo "www.cloudflare.com")
+    
+    if [[ -z "$secret" ]]; then
+        print_error "无法读取基础密钥"
+        return 1
+    fi
+    
+    # 计算域名长度并转换为hex
+    local domain_length=$(echo -n "$fake_domain" | wc -c)
+    local domain_length_hex=$(printf "%02x" $domain_length)
+    
+    # 将域名转换为hex
+    local domain_hex=$(echo -n "$fake_domain" | xxd -ps -c 256 2>/dev/null)
+    
+    if [[ -z "$domain_hex" ]]; then
+        print_error "无法生成域名hex编码"
+        return 1
+    fi
+    
+    # 生成TLS密钥 (格式: dd + 原密钥 + 域名长度 + 域名hex)
+    local tls_secret="dd${secret}${domain_length_hex}${domain_hex}"
+    
+    # 更新配置文件
+    if grep -q "^tls_secret:" $CONFIG_FILE; then
+        # 更新现有TLS密钥
+        sed -i "s/^tls_secret:.*/tls_secret: $tls_secret/" $CONFIG_FILE
+    else
+        # 添加TLS密钥到配置文件
+        sed -i "/^secret: $secret/a tls_secret: $tls_secret" $CONFIG_FILE
+    fi
+    
+    # 确保fake_domain存在
+    if ! grep -q "^fake_domain:" $CONFIG_FILE; then
+        sed -i "/^tls_secret: $tls_secret/a fake_domain: $fake_domain" $CONFIG_FILE
+    fi
+    
+    print_success "TLS密钥生成完成"
+    echo -e "${CYAN}新的TLS密钥:${NC} ${GREEN}$tls_secret${NC}"
+    echo -e "${CYAN}伪装域名:${NC} ${GREEN}$fake_domain${NC}"
+    
+    # 询问是否重启服务
+    echo
+    read -p "是否重启服务以应用新密钥? [y/N]: " restart_choice
+    if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
+        restart_service
+    else
+        print_warning "请手动重启服务以使新密钥生效: systemctl restart python-mtproxy"
+    fi
+    
+    return 0
+}
+
+# 一键复制连接链接
+copy_connection_links() {
+    if [[ ! -f $CONFIG_FILE ]]; then
+        print_error "配置文件不存在: $CONFIG_FILE"
+        return 1
+    fi
+    
+    # 获取服务器IP
+    local server_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || curl -s -m 5 ipinfo.io/ip 2>/dev/null || echo "获取失败")
+    
+    # 读取配置信息
+    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local tls_secret=$(grep "^tls_secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    
+    if [[ -z $port || -z $secret ]]; then
+        print_error "无法读取配置信息"
+        return 1
+    fi
+    
+    # 生成连接链接
+    local normal_link="https://t.me/proxy?server=$server_ip&port=$port&secret=$secret"
+    local tls_link=""
+    
+    if [[ -n "$tls_secret" && "$tls_secret" != "auto_generate" ]]; then
+        tls_link="https://t.me/proxy?server=$server_ip&port=$port&secret=$tls_secret"
+    fi
+    
+    echo
+    echo "=================================================="
+    echo "📋 连接链接复制"
+    echo "=================================================="
+    
+    echo -e "${YELLOW}普通模式链接:${NC}"
+    echo "$normal_link"
+    
+    if [[ -n "$tls_link" ]]; then
+        echo
+        echo -e "${YELLOW}TLS模式链接 (推荐):${NC}"
+        echo "$tls_link"
+    fi
+    
+    echo
+    echo -e "${CYAN}💡 提示:${NC}"
+    echo "1. 选择并复制上面的链接"
+    echo "2. 推荐使用TLS模式，连接更稳定"
+    echo "3. 可以将链接保存为书签备用"
     
     return 0
 }
@@ -142,7 +334,7 @@ show_main_menu() {
     echo "│ 5) 查看日志    6) 重载配置    7) 开机自启    8) 禁用自启    │"
     echo "├─ 配置管理 ─────────────────────────────────────────────────┤"
     echo "│ 9) 连接信息    10) 修改端口   11) 更换密钥   12) 编辑配置   │"
-    echo "│ 13) 生成二维码 14) 性能调优   15) 安全设置   16) 备份配置   │"
+    echo "│ 13) 生成TLS密钥 14) 复制链接  15) 生成二维码 16) 备份配置   │"
     echo "├─ 高级功能 ─────────────────────────────────────────────────┤"
     echo "│ 17) 流量统计   18) 用户管理   19) 更新程序   20) 卸载程序   │"
     echo "│ 21) 系统信息   22) 网络诊断   23) 日志分析   24) 帮助文档   │"
@@ -558,9 +750,9 @@ main() {
             10) change_port ;;
             11) change_secret ;;
             12) edit_config ;;
-            13) generate_qr_code ;;
-            14) print_info "性能调优功能开发中..." ;;
-            15) print_info "安全设置功能开发中..." ;;
+            13) generate_tls_secret ;;
+            14) copy_connection_links ;;
+            15) generate_qr_code ;;
             16) print_info "备份配置功能开发中..." ;;
             17) print_info "流量统计功能开发中..." ;;
             18) print_info "用户管理功能开发中..." ;;

@@ -273,8 +273,10 @@ generate_config() {
         SECRET=$(openssl rand -hex 16)
         
         # Generate domain hex for TLS
+        DOMAIN_LENGTH=$(echo -n "$FAKE_DOMAIN" | wc -c)
+        DOMAIN_LENGTH_HEX=$(printf "%02x" $DOMAIN_LENGTH)
         DOMAIN_HEX=$(echo -n "$FAKE_DOMAIN" | xxd -ps -c 256)
-        TLS_SECRET="ee${SECRET}${DOMAIN_HEX}"
+        TLS_SECRET="dd${SECRET}${DOMAIN_LENGTH_HEX}${DOMAIN_HEX}"
         
         # Display generated secret and require confirmation
         echo
@@ -345,8 +347,10 @@ EOF
         
         # Generate TLS secret if not exists
         if ! grep -q "tls_secret:" "$CONFIG_FILE"; then
+            DOMAIN_LENGTH=$(echo -n "$FAKE_DOMAIN" | wc -c)
+            DOMAIN_LENGTH_HEX=$(printf "%02x" $DOMAIN_LENGTH)
             DOMAIN_HEX=$(echo -n "$FAKE_DOMAIN" | xxd -ps -c 256)
-            TLS_SECRET="ee${SECRET}${DOMAIN_HEX}"
+            TLS_SECRET="dd${SECRET}${DOMAIN_LENGTH_HEX}${DOMAIN_HEX}"
             
             # Add TLS secret to config
             sed -i "/secret: $SECRET/a\\  tls_secret: $TLS_SECRET\n  fake_domain: $FAKE_DOMAIN" "$CONFIG_FILE"

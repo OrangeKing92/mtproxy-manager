@@ -40,6 +40,36 @@ def validate_secret(secret: str) -> bool:
         return False
 
 
+def generate_tls_secret(secret: str, domain: str = "www.cloudflare.com") -> str:
+    """Generate TLS secret for MTProxy
+    
+    Args:
+        secret: Original proxy secret (32 hex chars)
+        domain: Fake domain for TLS obfuscation
+        
+    Returns:
+        TLS secret in format: dd + secret + domain_length + domain_hex
+    """
+    if not validate_secret(secret):
+        raise ValueError("Invalid secret format")
+    
+    # Convert domain to bytes and get hex representation
+    domain_bytes = domain.encode('utf-8')
+    domain_length = len(domain_bytes)
+    
+    if domain_length > 255:
+        raise ValueError("Domain too long (max 255 bytes)")
+    
+    # Format: dd + original_secret + domain_length_byte + domain_hex
+    domain_length_hex = f"{domain_length:02x}"
+    domain_hex = domain_bytes.hex()
+    
+    tls_secret = f"dd{secret}{domain_length_hex}{domain_hex}"
+    
+    logger.debug(f"Generated TLS secret for domain: {domain}")
+    return tls_secret
+
+
 def format_secret(secret: str) -> str:
     """Format secret for display"""
     if not secret:

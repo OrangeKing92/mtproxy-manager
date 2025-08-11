@@ -22,6 +22,8 @@ class Config:
             'host': '0.0.0.0',
             'port': 8443,
             'secret': None,
+            'tls_secret': None,
+            'fake_domain': 'www.cloudflare.com',
             'max_connections': 1000,
             'timeout': 300,
             'workers': 4,
@@ -166,6 +168,19 @@ class Config:
             self.set('server.secret', secret)
             self.save()
             logger.info("Generated new secret")
+        
+        # Generate TLS secret if not present
+        tls_secret = self.get('server.tls_secret')
+        if not tls_secret or tls_secret == 'auto_generate':
+            from .utils import generate_tls_secret
+            fake_domain = self.get('server.fake_domain', 'www.cloudflare.com')
+            try:
+                tls_secret = generate_tls_secret(secret, fake_domain)
+                self.set('server.tls_secret', tls_secret)
+                self.save()
+                logger.info(f"Generated TLS secret for domain: {fake_domain}")
+            except Exception as e:
+                logger.warning(f"Failed to generate TLS secret: {e}")
         
         # Validate workers
         workers = self.get('server.workers')

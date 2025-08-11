@@ -605,21 +605,31 @@ class MTProxyCLI:
             
             port = self.config.get('server.port', 8443)
             secret = self.config.get('server.secret', '')
-            tls_secret = self.config.get('server.tls_secret', '')
+            tls_secret_config = self.config.get('server.tls_secret', '')
             fake_domain = self.config.get('server.fake_domain', 'www.cloudflare.com')
+            
+            # Generate actual TLS secret if configured as auto_generate
+            if tls_secret_config == 'auto_generate' and secret:
+                from mtproxy.utils import generate_tls_secret
+                actual_tls_secret = generate_tls_secret(secret, fake_domain)
+            else:
+                actual_tls_secret = tls_secret_config
             
             print(f"🌐 服务器IP: {server_ip}")
             print(f"🔌 端口: {port}")
             print(f"🔐 基础密钥: {secret}")
-            print(f"🔒 TLS密钥: {tls_secret}")
+            if actual_tls_secret:
+                print(f"🔒 TLS密钥: {actual_tls_secret}")
+            else:
+                print(f"🔒 TLS密钥: 未配置")
             print(f"🎭 伪装域名: {fake_domain}")
             print()
             
             if secret:
                 print("📱 Telegram代理链接:")
                 print(f"  普通模式: https://t.me/proxy?server={server_ip}&port={port}&secret={secret}")
-                if tls_secret:
-                    print(f"  TLS模式:  https://t.me/proxy?server={server_ip}&port={port}&secret={tls_secret}")
+                if actual_tls_secret:
+                    print(f"  TLS模式:  https://t.me/proxy?server={server_ip}&port={port}&secret={actual_tls_secret}")
                 print()
                 print("💡 使用方法:")
                 print("  1. 复制上面的任一代理链接")
