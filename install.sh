@@ -4,7 +4,7 @@
 # 适用于 Ubuntu/Debian/CentOS 系统
 # 作者: MTProxy Team
 # 版本: 2.0
-# 使用方法: bash <(curl -fsSL https://raw.githubusercontent.com/your-repo/mtproxy/main/install.sh)
+# 使用方法: bash <(curl -fsSL https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/install.sh)
 
 set -e
 
@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 PROJECT_NAME="python-mtproxy"
 INSTALL_DIR="/opt/${PROJECT_NAME}"
 SERVICE_NAME="python-mtproxy"
-GITHUB_REPO="your-repo/python-mtproxy"
+GITHUB_REPO="OrangeKing92/mtproxy-manager"
 REPO_URL="https://github.com/${GITHUB_REPO}.git"
 
 # 输出函数
