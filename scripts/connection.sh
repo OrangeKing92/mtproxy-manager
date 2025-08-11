@@ -32,12 +32,42 @@ get_config_info() {
         exit 1
     fi
     
-    local host=$(grep "^host:" "$CONFIG_FILE" | cut -d: -f2 | tr -d ' ')
-    local port=$(grep "^port:" "$CONFIG_FILE" | cut -d: -f2 | tr -d ' ')
-    local secret=$(grep "^secret:" "$CONFIG_FILE" | cut -d: -f2 | tr -d ' ')
+    # 解析嵌套的YAML配置，查找server节点下的配置
+    local host=$(grep -A 20 "^server:" "$CONFIG_FILE" | grep "^\s*host:" | head -1 | cut -d: -f2 | tr -d ' ')
+    local port=$(grep -A 20 "^server:" "$CONFIG_FILE" | grep "^\s*port:" | head -1 | cut -d: -f2 | tr -d ' ')
+    local secret=$(grep -A 20 "^server:" "$CONFIG_FILE" | grep "^\s*secret:" | head -1 | cut -d: -f2 | tr -d ' ')
+    
+    # 如果找不到，尝试使用yq或python来解析YAML（如果可用）
+    if [[ -z "$port" || -z "$secret" ]]; then
+        if command -v yq >/dev/null 2>&1; then
+            host=$(yq eval '.server.host' "$CONFIG_FILE" 2>/dev/null || echo "")
+            port=$(yq eval '.server.port' "$CONFIG_FILE" 2>/dev/null || echo "")
+            secret=$(yq eval '.server.secret' "$CONFIG_FILE" 2>/dev/null || echo "")
+        elif command -v python3 >/dev/null 2>&1; then
+            local yaml_result=$(python3 -c "
+import yaml, sys
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = yaml.safe_load(f)
+    server = config.get('server', {})
+    host = server.get('host', '')
+    port = server.get('port', '')
+    secret = server.get('secret', '')
+    print(f'{host}|{port}|{secret}')
+except Exception as e:
+    print('||')
+" 2>/dev/null)
+            if [[ "$yaml_result" != "||" ]]; then
+                host=$(echo "$yaml_result" | cut -d'|' -f1)
+                port=$(echo "$yaml_result" | cut -d'|' -f2) 
+                secret=$(echo "$yaml_result" | cut -d'|' -f3)
+            fi
+        fi
+    fi
     
     if [[ -z "$port" || -z "$secret" ]]; then
         print_error "配置文件中缺少必要信息"
+        print_error "无法解析YAML配置文件，请检查配置格式"
         exit 1
     fi
     
