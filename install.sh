@@ -404,10 +404,10 @@ get_connection_info() {
     local server_ipv6=$(curl -s -m 5 -6 ifconfig.me 2>/dev/null || echo "")
     
     # 读取配置信息
-    local port=$(grep "^port:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local tls_secret=$(grep "^tls_secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
-    local fake_domain=$(grep "^fake_domain:" $CONFIG_FILE | cut -d: -f2 | tr -d ' "')
+    local port=$(grep -A 20 "^server:" $CONFIG_FILE | grep "port:" | head -1 | sed 's/.*port: *\([0-9]*\).*/\1/')
+    local secret=$(grep -A 20 "^server:" $CONFIG_FILE | grep "secret:" | grep -v "tls_secret" | head -1 | sed 's/.*secret: *\([a-fA-F0-9]*\).*/\1/')
+    local tls_secret=$(grep -A 20 "^server:" $CONFIG_FILE | grep "tls_secret:" | head -1 | sed 's/.*tls_secret: *\([a-fA-F0-9]*\).*/\1/')
+    local fake_domain=$(grep -A 20 "^server:" $CONFIG_FILE | grep "fake_domain:" | head -1 | sed 's/.*fake_domain: *\([^ ]*\).*/\1/')
     
     if [[ -z $port || -z $secret ]]; then
         print_error "无法读取配置信息"
