@@ -11,14 +11,17 @@
 提供友好的用户界面，支持自定义配置：
 
 ```bash
-# 直接运行
-wget -O- https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/deploy.sh | sudo bash
+# 推荐方式：下载后运行
+wget -O deploy.sh https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/deploy.sh
+sudo bash deploy.sh
 
-# 或下载后运行
+# 或者克隆仓库
 git clone https://github.com/OrangeKing92/mtproxy-manager.git
 cd mtproxy-manager
 sudo bash deploy.sh
 ```
+
+> ⚠️ **注意**：交互式部署不支持管道执行（`wget -O- | bash`），请先下载脚本再运行。
 
 **特点：**
 - 🎨 美观的彩色界面

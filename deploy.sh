@@ -79,6 +79,20 @@ confirm_install() {
     echo -e "   • 建议在全新的服务器上运行"
     echo ""
     
+    # 检查是否通过管道执行（非交互式）
+    if [ ! -t 0 ]; then
+        echo -e "${GREEN}🚀 检测到非交互式执行，自动开始安装...${NC}"
+        echo ""
+        return
+    fi
+    
+    # 检查是否有 FORCE_INSTALL 环境变量
+    if [ "$FORCE_INSTALL" = "yes" ]; then
+        echo -e "${GREEN}🚀 检测到强制安装标志，自动开始安装...${NC}"
+        echo ""
+        return
+    fi
+    
     while true; do
         read -p "$(echo -e ${WHITE}是否继续安装？[y/N]: ${NC})" yn
         case $yn in
@@ -150,11 +164,27 @@ main_install() {
     echo ""
     echo ""
     
+    # 检查是否为非交互式执行
+    if [ ! -t 0 ]; then
+        echo -e "${RED}❌ 错误：检测到非交互式执行环境${NC}"
+        echo ""
+        echo -e "${YELLOW}💡 解决方案：${NC}"
+        echo -e "   1. ${WHITE}直接在服务器上运行：${NC}"
+        echo -e "      ${CYAN}wget -O deploy.sh https://your-domain/deploy.sh${NC}"
+        echo -e "      ${CYAN}bash deploy.sh${NC}"
+        echo ""
+        echo -e "   2. ${WHITE}使用快速部署脚本（非交互式）：${NC}"
+        echo -e "      ${CYAN}wget -O- https://your-domain/quick_deploy.sh | bash${NC}"
+        echo ""
+        echo -e "${RED}当前安装已停止，请选择上述方案之一。${NC}"
+        exit 1
+    fi
+    
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                      ${WHITE}开始交互式配置${CYAN}                           ║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${YELLOW}💡 提示：${NC}"
+    echo -e "${YELLOW}💡 配置建议：${NC}"
     echo -e "   • 选择版本时推荐选择 ${GREEN}2${NC} (9seconds 第三方版本)"
     echo -e "   • 端口推荐使用 ${GREEN}443${NC} 或 ${GREEN}8443${NC}"
     echo -e "   • 伪装域名推荐使用 ${GREEN}www.bing.com${NC} 或 ${GREEN}azure.microsoft.com${NC}"
