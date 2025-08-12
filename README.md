@@ -4,19 +4,48 @@
 > 
 > **目标明确：就是要创建一个 MTProxy 代理，仅此而已。**
 
-## 🚀 一键部署
+## 🚀 部署方式
 
-**在您的Linux服务器上运行：**
+### 方式1：交互式部署（推荐）
+
+提供友好的用户界面，支持自定义配置：
 
 ```bash
-# 方法1：直接运行（推荐）
+# 直接运行
 wget -O- https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/deploy.sh | sudo bash
 
-# 方法2：下载后运行
+# 或下载后运行
 git clone https://github.com/OrangeKing92/mtproxy-manager.git
 cd mtproxy-manager
 sudo bash deploy.sh
 ```
+
+**特点：**
+- 🎨 美观的彩色界面
+- 📊 系统信息检测
+- 💡 智能推荐配置
+- ⚡ 进度条显示
+- 🛡️ 输入验证
+
+### 方式2：快速部署
+
+适用于自动化场景，使用预设配置：
+
+```bash
+# 直接运行
+wget -O- https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/quick_deploy.sh | sudo bash
+
+# 或下载后运行
+git clone https://github.com/OrangeKing92/mtproxy-manager.git
+cd mtproxy-manager
+sudo bash quick_deploy.sh
+```
+
+**默认配置：**
+- 端口：443
+- 管理端口：8888
+- 伪装域名：azure.microsoft.com
+- 版本：9seconds (兼容性强)
 
 ## 📋 管理命令
 
