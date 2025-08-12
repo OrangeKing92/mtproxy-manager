@@ -132,6 +132,11 @@ install_code() {
     # 如果是从远程安装，下载代码
     if [[ ! -f "mtproxy/server.py" ]]; then
         cd /tmp
+        # 检查并删除已存在的目录
+        if [[ -d "mtproxy-manager" ]]; then
+            print_warning "删除已存在的目录: /tmp/mtproxy-manager"
+            rm -rf mtproxy-manager
+        fi
         git clone https://github.com/OrangeKing92/mtproxy-manager.git
         cd mtproxy-manager
     fi
@@ -179,12 +184,115 @@ EOF
     print_success "代码安装完成"
 }
 
+# 交互式配置
+interactive_config() {
+    print_title "交互式配置"
+    echo ""
+    echo "请根据提示输入配置信息，按回车使用默认值："
+    echo ""
+    
+    # 获取服务器IP
+    SERVER_IP=$(curl -s -4 ifconfig.me || curl -s -4 icanhazip.com || echo "127.0.0.1")
+    
+    # 交互式输入
+    read -p "请输入客户端连接端口 [默认: 443]: " CLIENT_PORT
+    CLIENT_PORT=${CLIENT_PORT:-443}
+    
+    read -p "请输入管理端口 [默认: 8080]: " ADMIN_PORT
+    ADMIN_PORT=${ADMIN_PORT:-8080}
+    
+    read -p "请输入伪装域名 [默认: azure.microsoft.com]: " FAKE_DOMAIN
+    FAKE_DOMAIN=${FAKE_DOMAIN:-azure.microsoft.com}
+    
+    read -p "请输入推广TAG (可选，回车跳过): " PROMO_TAG
+    
+    read -p "请输入管理员密码 [默认: admin123]: " ADMIN_PASSWORD
+    ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+    
+    echo ""
+    print_info "配置信息确认："
+    echo "• 服务器IP: $SERVER_IP"
+    echo "• 客户端端口: $CLIENT_PORT"  
+    echo "• 管理端口: $ADMIN_PORT"
+    echo "• 伪装域名: $FAKE_DOMAIN"
+    echo "• 推广TAG: ${PROMO_TAG:-无}"
+    echo "• 管理员密码: $ADMIN_PASSWORD"
+    echo ""
+    
+    read -p "确认配置信息是否正确？[Y/n]: " confirm_config
+    if [[ $confirm_config == [Nn] ]]; then
+        print_info "重新配置..."
+        interactive_config
+        return
+    fi
+    
+    # 保存配置到临时变量，稍后写入配置文件
+    export MTPROXY_CLIENT_PORT="$CLIENT_PORT"
+    export MTPROXY_ADMIN_PORT="$ADMIN_PORT"
+    export MTPROXY_FAKE_DOMAIN="$FAKE_DOMAIN"
+    export MTPROXY_PROMO_TAG="$PROMO_TAG"
+    export MTPROXY_ADMIN_PASSWORD="$ADMIN_PASSWORD"
+    export MTPROXY_SERVER_IP="$SERVER_IP"
+    
+    print_success "配置信息已保存"
+}
+
+# 生成配置文件
+generate_config_with_params() {
+    print_info "生成配置文件..."
+    
+    # 生成随机密钥
+    SECRET=$(openssl rand -hex 16)
+    
+    # 生成配置文件
+    cat > "$INSTALL_DIR/config/mtproxy.conf" << EOF
+# MTProxy Configuration File
+# Generated on $(date)
+
+# Basic Settings
+server:
+  host: "0.0.0.0"
+  port: ${MTPROXY_CLIENT_PORT}
+  
+# TLS Settings  
+tls:
+  enabled: true
+  fake_domain: "${MTPROXY_FAKE_DOMAIN}"
+  
+# Proxy Settings
+proxy:
+  secret: "${SECRET}"
+  tag: "${MTPROXY_PROMO_TAG}"
+  
+# Admin Settings
+admin:
+  enabled: true
+  port: ${MTPROXY_ADMIN_PORT}
+  username: "admin"
+  password: "${MTPROXY_ADMIN_PASSWORD}"
+  
+# Security Settings
+security:
+  max_connections: 1000
+  timeout: 300
+  
+# Logging
+logging:
+  level: "INFO"
+  file: "logs/mtproxy.log"
+  max_size: "10MB"
+  backup_count: 5
+EOF
+
+    print_success "配置文件已生成: $INSTALL_DIR/config/mtproxy.conf"
+}
+
 # 配置服务
 setup_service() {
     print_info "配置systemd服务..."
     
-    # 生成配置文件
-    "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/tools/mtproxy_cli.py" generate-config
+    # 生成配置文件 - 使用交互式配置的参数
+    generate_config_with_params
     
     # 创建systemd服务文件
     cat > "/etc/systemd/system/$SERVICE_NAME.service" << EOF
@@ -262,23 +370,48 @@ show_connection_info() {
     
     echo "MTProxy已成功安装并启动！"
     echo ""
-    echo "管理命令:"
+    
+    # 读取配置文件中的密钥
+    if [[ -f "$INSTALL_DIR/config/mtproxy.conf" ]]; then
+        SECRET=$(grep "secret:" "$INSTALL_DIR/config/mtproxy.conf" | cut -d'"' -f2)
+        
+        echo "📱 Telegram连接信息:"
+        echo "────────────────────────────────────────"
+        echo "🌐 服务器IP: ${MTPROXY_SERVER_IP}"
+        echo "🔌 端口: ${MTPROXY_CLIENT_PORT}"
+        echo "🔑 密钥: ${SECRET}"
+        echo "🎭 伪装域名: ${MTPROXY_FAKE_DOMAIN}"
+        if [[ -n "${MTPROXY_PROMO_TAG}" ]]; then
+            echo "🏷️  推广TAG: ${MTPROXY_PROMO_TAG}"
+        fi
+        echo ""
+        echo "📋 连接链接:"
+        if [[ -n "${MTPROXY_PROMO_TAG}" ]]; then
+            echo "https://t.me/proxy?server=${MTPROXY_SERVER_IP}&port=${MTPROXY_CLIENT_PORT}&secret=ee${SECRET}${MTPROXY_FAKE_DOMAIN}&tag=${MTPROXY_PROMO_TAG}"
+        else
+            echo "https://t.me/proxy?server=${MTPROXY_SERVER_IP}&port=${MTPROXY_CLIENT_PORT}&secret=ee${SECRET}${MTPROXY_FAKE_DOMAIN}"
+        fi
+        echo ""
+        echo "🔧 管理面板:"
+        echo "http://${MTPROXY_SERVER_IP}:${MTPROXY_ADMIN_PORT}"
+        echo "用户名: admin"
+        echo "密码: ${MTPROXY_ADMIN_PASSWORD}"
+        echo ""
+    fi
+    
+    echo "📖 管理命令:"
     echo "  mtproxy          # 打开管理面板"
+    echo "  mtproxy status   # 查看状态"
+    echo "  mtproxy restart  # 重启服务"
+    echo "  mtproxy logs     # 查看日志"
     echo ""
-    echo "系统命令:"
+    echo "🔧 系统命令:"
     echo "  systemctl status python-mtproxy    # 查看状态"
     echo "  systemctl restart python-mtproxy   # 重启服务"
     echo "  journalctl -u python-mtproxy -f    # 查看日志"
     echo ""
     
-    # 显示连接信息
-    if [[ -f "$INSTALL_DIR/tools/mtproxy_cli.py" ]]; then
-        echo "连接信息:"
-        "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/tools/mtproxy_cli.py" proxy
-    fi
-    
-    echo ""
-    print_success "请运行 'mtproxy' 命令打开管理面板"
+    print_success "安装完成！请保存上述连接信息"
 }
 
 # 主安装函数
@@ -309,6 +442,7 @@ main() {
     install_dependencies
     setup_environment
     install_code
+    interactive_config  # 添加交互式配置
     setup_service
     setup_management
     start_service
