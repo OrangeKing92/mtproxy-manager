@@ -1,6 +1,6 @@
 [Unit]
 Description=Python MTProxy Service
-Documentation=https://github.com/your-repo/python-mtproxy
+Documentation=https://github.com/OrangeKing92/mtproxy-manager
 After=network.target network-online.target
 Wants=network-online.target
 Requires=network.target

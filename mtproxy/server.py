@@ -96,6 +96,8 @@ class MTProxyServer:
             # Log server information
             local_ip = get_local_ip()
             secret = self.config.get('server.secret')
+            tls_secret = self.config.get('server.tls_secret')
+            fake_domain = self.config.get('server.fake_domain')
             
             logger.info("=" * 60)
             logger.info("MTProxy Server Started Successfully!")
@@ -103,10 +105,32 @@ class MTProxyServer:
             logger.info(f"Listening on: {host}:{port}")
             logger.info(f"Local IP: {local_ip}")
             logger.info(f"Secret: {secret}")
+            if tls_secret:
+                logger.info(f"TLS Secret: {tls_secret}")
+                logger.info(f"Fake Domain: {fake_domain}")
             logger.info(f"Max connections: {server_config['max_connections']}")
             logger.info(f"Workers: {server_config['workers']}")
             logger.info(f"Timeout: {server_config['timeout']}s")
             logger.info("=" * 60)
+            
+            # 下载官方配置文件
+            self._download_official_configs()
+            
+            # 生成连接链接
+            try:
+                import requests
+                try:
+                    external_ip = requests.get('https://api.ip.sb/ip', timeout=5).text.strip()
+                except:
+                    external_ip = requests.get('https://ipinfo.io/ip', timeout=5).text.strip()
+                
+                logger.info("📱 Telegram连接链接:")
+                logger.info(f"普通模式: https://t.me/proxy?server={external_ip}&port={port}&secret={secret}")
+                if tls_secret:
+                    logger.info(f"TLS模式: https://t.me/proxy?server={external_ip}&port={port}&secret={tls_secret}")
+                logger.info("=" * 60)
+            except:
+                logger.warning("无法获取外网IP，请手动生成连接链接")
             
             # Start background tasks
             await self._start_background_tasks()
@@ -118,7 +142,30 @@ class MTProxyServer:
         except Exception as e:
             logger.error(f"Failed to start server: {e}")
             self.running = False
-            raise ServerError(f"Server start failed: {e}")
+
+    def _download_official_configs(self):
+        """下载官方配置文件"""
+        import os
+        import requests
+        
+        config_dir = "config"
+        os.makedirs(config_dir, exist_ok=True)
+        
+        files = [
+            ("https://core.telegram.org/getProxySecret", "proxy-secret"),
+            ("https://core.telegram.org/getProxyConfig", "proxy-multi.conf")
+        ]
+        
+        for url, filename in files:
+            filepath = os.path.join(config_dir, filename)
+            try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                with open(filepath, 'wb') as f:
+                    f.write(response.content)
+                logger.info(f"已下载 {filename}")
+            except Exception as e:
+                logger.warning(f"下载 {filename} 失败: {e}")
     
     async def stop(self):
         """Stop the MTProxy server"""

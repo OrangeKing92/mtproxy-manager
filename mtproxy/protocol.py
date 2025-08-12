@@ -41,7 +41,7 @@ class MTProtoHandler:
         self.auth = ProxyAuth(secret)
         self.connections: Dict[str, ConnectionInfo] = {}
         
-        # Telegram DCs (data centers)
+        # Telegram DCs (data centers) - 使用官方最新地址
         self.telegram_dcs = {
             1: ("149.154.175.53", 443),
             2: ("149.154.167.51", 443),
@@ -49,6 +49,9 @@ class MTProtoHandler:
             4: ("149.154.167.91", 443),
             5: ("91.108.56.130", 443),
         }
+        
+        # 尝试加载官方配置文件更新DC地址
+        self._load_official_config()
         
         logger.info("MTProto handler initialized")
     
@@ -303,6 +306,32 @@ class MTProtoHandler:
             del self.connections[connection_id]
             logger.info(f"Forced closure of connection: {connection_id}")
     
+    def _load_official_config(self):
+        """加载官方配置文件"""
+        try:
+            # 尝试读取proxy-multi.conf
+            import os
+            config_file = "config/proxy-multi.conf"
+            if os.path.exists(config_file):
+                with open(config_file, 'r') as f:
+                    content = f.read()
+                # 简化解析，提取DC配置
+                for line in content.split('\n'):
+                    if line.startswith('proxy_for '):
+                        parts = line.split()
+                        if len(parts) >= 3:
+                            try:
+                                dc_id = int(parts[1])
+                                ip_port = parts[2].split(':')
+                                if len(ip_port) == 2:
+                                    ip, port = ip_port[0], int(ip_port[1])
+                                    self.telegram_dcs[dc_id] = (ip, port)
+                            except:
+                                continue
+                logger.info("已加载官方DC配置")
+        except Exception as e:
+            logger.debug(f"未找到官方配置文件: {e}")
+
     def close_all_connections(self):
         """Close all connections"""
         count = len(self.connections)

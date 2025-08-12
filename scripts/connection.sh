@@ -6,7 +6,8 @@
 set -e
 
 # 配置
-INSTALL_DIR="/opt/python-mtproxy"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="$(dirname "$SCRIPT_DIR")"
 CONFIG_FILE="$INSTALL_DIR/config/mtproxy.conf"
 SERVICE_NAME="python-mtproxy"
 

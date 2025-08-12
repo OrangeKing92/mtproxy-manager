@@ -179,6 +179,7 @@ class Config:
                 self.set('server.tls_secret', tls_secret)
                 self.save()
                 logger.info(f"Generated TLS secret for domain: {fake_domain}")
+                logger.info(f"TLS Secret: {tls_secret}")
             except Exception as e:
                 logger.warning(f"Failed to generate TLS secret: {e}")
         

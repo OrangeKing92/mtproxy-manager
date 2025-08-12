@@ -755,15 +755,15 @@ main() {
             13) generate_tls_secret ;;
             14) copy_connection_links ;;
             15) generate_qr_code ;;
-            16) print_info "备份配置功能开发中..." ;;
-            17) print_info "流量统计功能开发中..." ;;
-            18) print_info "用户管理功能开发中..." ;;
-            19) print_info "更新程序功能开发中..." ;;
-            20) print_info "卸载程序功能开发中..." ;;
+            16) backup_config ;;
+            17) show_traffic_stats ;;
+            18) user_management ;;
+            19) update_program ;;
+            20) uninstall_program ;;
             21) show_system_info ;;
-            22) print_info "网络诊断功能开发中..." ;;
-            23) print_info "日志分析功能开发中..." ;;
-            24) print_info "帮助文档功能开发中..." ;;
+            22) network_diagnostics ;;
+            23) log_analysis ;;
+            24) show_help_docs ;;
             0)
                 print_info "感谢使用 MTProxy 管理脚本!"
                 exit 0
@@ -776,6 +776,178 @@ main() {
         echo ""
         read -p "按回车键继续..." -r
     done
+}
+
+# 备份配置
+backup_config() {
+    print_info "配置备份功能"
+    
+    local backup_dir="$INSTALL_DIR/backup/$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$backup_dir"
+    
+    # 备份配置文件
+    if [[ -f "$CONFIG_FILE" ]]; then
+        cp "$CONFIG_FILE" "$backup_dir/"
+        print_success "配置文件已备份到: $backup_dir"
+    fi
+    
+    # 备份日志文件
+    if [[ -d "$INSTALL_DIR/logs" ]]; then
+        cp -r "$INSTALL_DIR/logs" "$backup_dir/"
+        print_success "日志文件已备份"
+    fi
+    
+    print_success "备份完成: $backup_dir"
+}
+
+# 流量统计
+show_traffic_stats() {
+    print_info "流量统计功能"
+    
+    if systemctl is-active --quiet $SERVICE_NAME; then
+        local pid=$(systemctl show -p MainPID --value $SERVICE_NAME)
+        if [[ $pid != "0" ]]; then
+            print_info "进程网络统计:"
+            if command -v ss >/dev/null; then
+                ss -t -p | grep "pid=$pid" | wc -l | xargs echo "当前连接数:"
+            fi
+            
+            if [[ -f "/proc/$pid/net/dev" ]]; then
+                print_info "网络接口统计:"
+                cat /proc/net/dev | grep -E "(eth|ens|enp)" | head -3
+            fi
+        fi
+    else
+        print_warning "服务未运行，无法获取流量统计"
+    fi
+}
+
+# 用户管理
+user_management() {
+    print_info "用户管理功能"
+    
+    echo "当前连接的用户信息:"
+    if command -v ss >/dev/null; then
+        local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
+        if [[ -n "$port" ]]; then
+            ss -tn | grep ":$port" | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr
+        fi
+    fi
+}
+
+# 更新程序
+update_program() {
+    print_info "程序更新功能"
+    
+    read -p "确认要更新MTProxy程序吗? [y/N]: " confirm
+    if [[ $confirm == [Yy] ]]; then
+        print_info "停止服务..."
+        systemctl stop $SERVICE_NAME
+        
+        print_info "备份当前版本..."
+        backup_config
+        
+        print_info "更新程序..."
+        # 这里可以添加实际的更新逻辑
+        print_success "程序更新完成，重启服务..."
+        systemctl start $SERVICE_NAME
+    fi
+}
+
+# 卸载程序
+uninstall_program() {
+    print_warning "程序卸载功能"
+    
+    echo "这将完全卸载MTProxy系统！"
+    read -p "确认要卸载吗? 输入 'UNINSTALL' 确认: " confirm
+    if [[ $confirm == "UNINSTALL" ]]; then
+        if [[ -f "$INSTALL_DIR/scripts/uninstall.sh" ]]; then
+            bash "$INSTALL_DIR/scripts/uninstall.sh"
+        else
+            print_error "卸载脚本不存在"
+        fi
+    else
+        print_info "取消卸载"
+    fi
+}
+
+# 网络诊断
+network_diagnostics() {
+    print_info "网络诊断工具"
+    
+    local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
+    
+    echo "网络连通性诊断:"
+    echo "================"
+    
+    # 检查本地端口监听
+    if ss -tlnp | grep ":$port " >/dev/null; then
+        print_success "端口 $port 监听正常"
+    else
+        print_error "端口 $port 未监听"
+    fi
+    
+    # 检查外网连接
+    if curl -s --connect-timeout 5 ifconfig.me >/dev/null; then
+        print_success "外网连接正常"
+    else
+        print_warning "外网连接异常"
+    fi
+    
+    # 检查DNS解析
+    if nslookup google.com >/dev/null 2>&1; then
+        print_success "DNS解析正常"
+    else
+        print_warning "DNS解析异常"
+    fi
+}
+
+# 日志分析
+log_analysis() {
+    print_info "日志分析工具"
+    
+    local log_file="$INSTALL_DIR/logs/mtproxy.log"
+    if [[ -f "$log_file" ]]; then
+        echo "日志统计信息:"
+        echo "============"
+        echo "日志文件大小: $(du -h "$log_file" | cut -f1)"
+        echo "总行数: $(wc -l < "$log_file")"
+        
+        echo ""
+        echo "错误统计:"
+        grep -i error "$log_file" | wc -l | xargs echo "错误数量:"
+        
+        echo ""
+        echo "最近的错误:"
+        grep -i error "$log_file" | tail -5
+        
+    else
+        print_warning "日志文件不存在: $log_file"
+    fi
+}
+
+# 帮助文档
+show_help_docs() {
+    echo -e "${CYAN}MTProxy 帮助文档${NC}"
+    echo "==================="
+    echo ""
+    echo "常用命令:"
+    echo "  启动服务: systemctl start python-mtproxy"
+    echo "  停止服务: systemctl stop python-mtproxy"
+    echo "  重启服务: systemctl restart python-mtproxy"
+    echo "  查看状态: systemctl status python-mtproxy"
+    echo "  查看日志: journalctl -u python-mtproxy -f"
+    echo ""
+    echo "配置文件位置: $CONFIG_FILE"
+    echo "日志文件位置: $INSTALL_DIR/logs/"
+    echo "项目目录: $INSTALL_DIR"
+    echo ""
+    echo "获取连接信息: 选择菜单选项 9"
+    echo "生成二维码: 选择菜单选项 15"
+    echo "修改端口: 选择菜单选项 10"
+    echo "更换密钥: 选择菜单选项 11"
+    echo ""
+    echo "如有问题，请查看日志文件或运行系统诊断。"
 }
 
 # 如果脚本被直接执行

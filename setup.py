@@ -27,7 +27,7 @@ setup(
     long_description_content_type='text/markdown',
     author='MTProxy Team',
     author_email='admin@example.com',
-    url='https://github.com/your-repo/python-mtproxy',
+    url='https://github.com/OrangeKing92/mtproxy-manager',
     packages=find_packages(),
     install_requires=read_requirements('requirements.txt'),
     extras_require={

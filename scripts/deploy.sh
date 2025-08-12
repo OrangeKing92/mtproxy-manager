@@ -367,7 +367,7 @@ setup_systemd() {
     cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=Python MTProxy Service
-Documentation=https://github.com/your-repo/python-mtproxy
+Documentation=https://github.com/OrangeKing92/mtproxy-manager
 After=network.target
 Wants=network.target
 
