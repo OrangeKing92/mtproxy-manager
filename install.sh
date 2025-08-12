@@ -3,7 +3,8 @@
 # MTProxy Manager 一键安装脚本
 # 适用于 Ubuntu/Debian/CentOS 系统
 # 作者: MTProxy Team
-# 版本: 3.0
+# 版本: 3.1
+# 参考: https://github.com/sunpma/mtp.git
 # 使用方法: bash <(curl -fsSL https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/install.sh)
 
 set -e
@@ -22,6 +23,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
+PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
 # 输出函数
@@ -42,9 +44,26 @@ print_error() {
 }
 
 print_title() {
-    echo -e "${CYAN}========================================${NC}"
+    echo ""
+    echo -e "${CYAN}════════════════════════════════════════${NC}"
     echo -e "${WHITE}$1${NC}"
-    echo -e "${CYAN}========================================${NC}"
+    echo -e "${CYAN}════════════════════════════════════════${NC}"
+    echo ""
+}
+
+print_banner() {
+    clear
+    echo -e "${PURPLE}"
+    echo "    __  __  _______  _____                       "
+    echo "   |  \/  ||__   __|  __ \                      "
+    echo "   | \  / |   | |  | |__) |_ __   ___  __  __  _   _ "
+    echo "   | |\/| |   | |  |  ___/| '__| / _ \ \\\\\\/  || | | |"
+    echo "   | |  | |   | |  | |    | |   | (_) |>  <| |_| |"
+    echo "   |_|  |_|   |_|  |_|    |_|   \___//_/\_\\\\___/"
+    echo ""
+    echo -e "${WHITE}      Telegram MTProxy Manager v3.1${NC}"
+    echo -e "${CYAN}      https://github.com/OrangeKing92/mtproxy-manager${NC}"
+    echo ""
 }
 
 # 检查root权限
@@ -82,20 +101,52 @@ check_system() {
     print_success "系统检查完成 - $ID ($PACKAGE_MANAGER)"
 }
 
+# 获取服务器信息
+get_server_info() {
+    print_info "获取服务器信息..."
+
+# 获取服务器IP
+    SERVER_IP=$(curl -s -4 ifconfig.me 2>/dev/null || curl -s -4 icanhazip.com 2>/dev/null || curl -s -4 ipecho.net/plain 2>/dev/null || echo "127.0.0.1")
+    
+    # 检测系统
+    if [[ -f /etc/os-release ]]; then
+        source /etc/os-release
+        OS_NAME="$PRETTY_NAME"
+    else
+        OS_NAME="Unknown Linux"
+    fi
+    
+    # 检测CPU架构
+    ARCH=$(uname -m)
+    
+    # 检测内存
+    MEM_TOTAL=$(free -h | awk '/^Mem:/ {print $2}')
+    
+    echo ""
+    echo -e "${GREEN}服务器信息:${NC}"
+    echo "• IP地址: ${SERVER_IP}"
+    echo "• 系统: ${OS_NAME}"
+    echo "• 架构: ${ARCH}"
+    echo "• 内存: ${MEM_TOTAL}"
+        echo ""
+}
+
 # 安装依赖
 install_dependencies() {
-    print_info "安装系统依赖..."
+    print_title "安装系统依赖"
     
+    print_info "更新包管理器..."
     case $PACKAGE_MANAGER in
         apt)
-            apt update
-            apt install -y python3 python3-pip python3-venv python3-full git curl wget systemd
+            export DEBIAN_FRONTEND=noninteractive
+            apt update -qq
+            apt install -y python3 python3-pip python3-venv python3-full git curl wget openssl systemd net-tools >/dev/null 2>&1
             ;;
         yum)
-            yum update -y
-            yum install -y python3 python3-pip git curl wget systemd
-            ;;
-    esac
+            yum update -y -q
+            yum install -y python3 python3-pip git curl wget openssl systemd net-tools >/dev/null 2>&1
+                ;;
+        esac
     
     # 检查Python版本
     PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
@@ -186,45 +237,126 @@ EOF
 
 # 交互式配置
 interactive_config() {
-    print_title "交互式配置"
-    echo ""
-    echo "请根据提示输入配置信息，按回车使用默认值："
-    echo ""
+    print_title "交互式配置向导"
     
-    # 获取服务器IP
-    SERVER_IP=$(curl -s -4 ifconfig.me || curl -s -4 icanhazip.com || echo "127.0.0.1")
-    
-    # 交互式输入
-    read -p "请输入客户端连接端口 [默认: 443]: " CLIENT_PORT
-    CLIENT_PORT=${CLIENT_PORT:-443}
-    
-    read -p "请输入管理端口 [默认: 8080]: " ADMIN_PORT
-    ADMIN_PORT=${ADMIN_PORT:-8080}
-    
-    read -p "请输入伪装域名 [默认: azure.microsoft.com]: " FAKE_DOMAIN
-    FAKE_DOMAIN=${FAKE_DOMAIN:-azure.microsoft.com}
-    
-    read -p "请输入推广TAG (可选，回车跳过): " PROMO_TAG
-    
-    read -p "请输入管理员密码 [默认: admin123]: " ADMIN_PASSWORD
-    ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-    
-    echo ""
-    print_info "配置信息确认："
-    echo "• 服务器IP: $SERVER_IP"
-    echo "• 客户端端口: $CLIENT_PORT"  
-    echo "• 管理端口: $ADMIN_PORT"
-    echo "• 伪装域名: $FAKE_DOMAIN"
-    echo "• 推广TAG: ${PROMO_TAG:-无}"
-    echo "• 管理员密码: $ADMIN_PASSWORD"
+    echo -e "${YELLOW}请根据提示输入配置信息，直接按回车使用默认值${NC}"
     echo ""
     
-    read -p "确认配置信息是否正确？[Y/n]: " confirm_config
-    if [[ $confirm_config == [Nn] ]]; then
-        print_info "重新配置..."
-        interactive_config
-        return
-    fi
+    # 1. 客户端端口
+    while true; do
+        read -p "$(echo -e ${CYAN}请输入客户端连接端口${NC}) [默认: 443]: " CLIENT_PORT
+        CLIENT_PORT=${CLIENT_PORT:-443}
+        
+        if [[ "$CLIENT_PORT" =~ ^[0-9]+$ ]] && [ "$CLIENT_PORT" -ge 1 ] && [ "$CLIENT_PORT" -le 65535 ]; then
+            if netstat -tuln 2>/dev/null | grep ":$CLIENT_PORT " >/dev/null 2>&1; then
+                print_warning "端口 $CLIENT_PORT 已被占用，请选择其他端口"
+            else
+            break
+            fi
+        else
+            print_warning "请输入有效的端口号 (1-65535)"
+        fi
+    done
+    
+    # 2. 管理端口
+            while true; do
+        read -p "$(echo -e ${CYAN}请输入管理端口${NC}) [默认: 8080]: " ADMIN_PORT
+        ADMIN_PORT=${ADMIN_PORT:-8080}
+        
+        if [[ "$ADMIN_PORT" =~ ^[0-9]+$ ]] && [ "$ADMIN_PORT" -ge 1 ] && [ "$ADMIN_PORT" -le 65535 ] && [ "$ADMIN_PORT" != "$CLIENT_PORT" ]; then
+            if netstat -tuln 2>/dev/null | grep ":$ADMIN_PORT " >/dev/null 2>&1; then
+                print_warning "端口 $ADMIN_PORT 已被占用，请选择其他端口"
+            else
+                break
+            fi
+        else
+            print_warning "请输入有效的端口号 (1-65535)，且不能与客户端端口相同"
+        fi
+    done
+    
+    # 3. 伪装域名
+    echo ""
+    echo -e "${YELLOW}伪装域名选择:${NC}"
+    echo "1) azure.microsoft.com (推荐)"
+    echo "2) cdn.cloudflare.com"
+    echo "3) www.google.com"
+    echo "4) 自定义域名"
+    echo ""
+    
+    while true; do
+        read -p "$(echo -e ${CYAN}请选择伪装域名${NC}) [默认: 1]: " domain_choice
+        domain_choice=${domain_choice:-1}
+        
+        case $domain_choice in
+            1)
+                FAKE_DOMAIN="azure.microsoft.com"
+                break
+                ;;
+            2)
+                FAKE_DOMAIN="cdn.cloudflare.com"
+                break
+                ;;
+            3)
+                FAKE_DOMAIN="www.google.com"
+                break
+                ;;
+            4)
+                read -p "$(echo -e ${CYAN}请输入自定义域名${NC}): " FAKE_DOMAIN
+                if [[ -n "$FAKE_DOMAIN" ]]; then
+                    break
+                else
+                    print_warning "域名不能为空"
+                fi
+                ;;
+            *)
+                print_warning "请输入有效选项 (1-4)"
+            ;;
+    esac
+    done
+    
+    # 4. 推广TAG (可选)
+        echo ""
+    read -p "$(echo -e ${CYAN}请输入推广TAG${NC}) (可选，直接回车跳过): " PROMO_TAG
+    
+    # 5. 管理员密码
+    while true; do
+        read -p "$(echo -e ${CYAN}请输入管理员密码${NC}) [默认: admin123]: " ADMIN_PASSWORD
+        ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+        
+        if [[ ${#ADMIN_PASSWORD} -ge 6 ]]; then
+            break
+        else
+            print_warning "密码长度至少6位"
+        fi
+    done
+    
+    # 确认配置
+    echo ""
+    print_title "配置信息确认"
+    echo -e "${GREEN}服务器IP:${NC} $SERVER_IP"
+    echo -e "${GREEN}客户端端口:${NC} $CLIENT_PORT"  
+    echo -e "${GREEN}管理端口:${NC} $ADMIN_PORT"
+    echo -e "${GREEN}伪装域名:${NC} $FAKE_DOMAIN"
+    echo -e "${GREEN}推广TAG:${NC} ${PROMO_TAG:-无}"
+    echo -e "${GREEN}管理员密码:${NC} $ADMIN_PASSWORD"
+    echo ""
+    
+    while true; do
+        read -p "$(echo -e ${YELLOW}确认配置信息是否正确？${NC}) [Y/n]: " confirm_config
+        case $confirm_config in
+            [Yy]* | "")
+                break
+                ;;
+            [Nn]*)
+                print_info "重新配置..."
+                interactive_config
+                return
+                ;;
+            *)
+                print_warning "请输入 Y 或 n"
+            ;;
+    esac
+    done
     
     # 保存配置到临时变量，稍后写入配置文件
     export MTPROXY_CLIENT_PORT="$CLIENT_PORT"
@@ -353,8 +485,8 @@ start_service() {
     print_info "启动MTProxy服务..."
     
     systemctl start "$SERVICE_NAME"
-    sleep 3
-    
+        sleep 3
+        
     if systemctl is-active --quiet "$SERVICE_NAME"; then
         print_success "服务启动成功"
     else
@@ -366,83 +498,95 @@ start_service() {
 
 # 显示连接信息
 show_connection_info() {
-    print_title "安装完成"
+    print_banner
+    print_title "🎉 安装完成"
     
-    echo "MTProxy已成功安装并启动！"
+    # 读取密钥
+    SECRET=$(grep "secret:" "$INSTALL_DIR/config/mtproxy.conf" | cut -d'"' -f2)
+    
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${WHITE}📱 Telegram连接信息${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    
-    # 读取配置文件中的密钥
-    if [[ -f "$INSTALL_DIR/config/mtproxy.conf" ]]; then
-        SECRET=$(grep "secret:" "$INSTALL_DIR/config/mtproxy.conf" | cut -d'"' -f2)
-        
-        echo "📱 Telegram连接信息:"
-        echo "────────────────────────────────────────"
-        echo "🌐 服务器IP: ${MTPROXY_SERVER_IP}"
-        echo "🔌 端口: ${MTPROXY_CLIENT_PORT}"
-        echo "🔑 密钥: ${SECRET}"
-        echo "🎭 伪装域名: ${MTPROXY_FAKE_DOMAIN}"
-        if [[ -n "${MTPROXY_PROMO_TAG}" ]]; then
-            echo "🏷️  推广TAG: ${MTPROXY_PROMO_TAG}"
-        fi
-        echo ""
-        echo "📋 连接链接:"
-        if [[ -n "${MTPROXY_PROMO_TAG}" ]]; then
-            echo "https://t.me/proxy?server=${MTPROXY_SERVER_IP}&port=${MTPROXY_CLIENT_PORT}&secret=ee${SECRET}${MTPROXY_FAKE_DOMAIN}&tag=${MTPROXY_PROMO_TAG}"
-        else
-            echo "https://t.me/proxy?server=${MTPROXY_SERVER_IP}&port=${MTPROXY_CLIENT_PORT}&secret=ee${SECRET}${MTPROXY_FAKE_DOMAIN}"
-        fi
-        echo ""
-        echo "🔧 管理面板:"
-        echo "http://${MTPROXY_SERVER_IP}:${MTPROXY_ADMIN_PORT}"
-        echo "用户名: admin"
-        echo "密码: ${MTPROXY_ADMIN_PASSWORD}"
-        echo ""
+    echo -e "${CYAN}🌐 服务器IP:${NC} ${MTPROXY_SERVER_IP}"
+    echo -e "${CYAN}🔌 端口:${NC} ${MTPROXY_CLIENT_PORT}"
+    echo -e "${CYAN}🔑 密钥:${NC} ${SECRET}"
+    echo -e "${CYAN}🎭 伪装域名:${NC} ${MTPROXY_FAKE_DOMAIN}"
+    if [[ -n "${MTPROXY_PROMO_TAG}" ]]; then
+        echo -e "${CYAN}🏷️  推广TAG:${NC} ${MTPROXY_PROMO_TAG}"
     fi
-    
-    echo "📖 管理命令:"
-    echo "  mtproxy          # 打开管理面板"
-    echo "  mtproxy status   # 查看状态"
-    echo "  mtproxy restart  # 重启服务"
-    echo "  mtproxy logs     # 查看日志"
     echo ""
-    echo "🔧 系统命令:"
-    echo "  systemctl status python-mtproxy    # 查看状态"
-    echo "  systemctl restart python-mtproxy   # 重启服务"
-    echo "  journalctl -u python-mtproxy -f    # 查看日志"
+    echo -e "${YELLOW}📋 连接链接:${NC}"
+    if [[ -n "${MTPROXY_PROMO_TAG}" ]]; then
+        echo "https://t.me/proxy?server=${MTPROXY_SERVER_IP}&port=${MTPROXY_CLIENT_PORT}&secret=ee${SECRET}${MTPROXY_FAKE_DOMAIN}&tag=${MTPROXY_PROMO_TAG}"
+    else
+        echo "https://t.me/proxy?server=${MTPROXY_SERVER_IP}&port=${MTPROXY_CLIENT_PORT}&secret=ee${SECRET}${MTPROXY_FAKE_DOMAIN}"
+    fi
     echo ""
-    
-    print_success "安装完成！请保存上述连接信息"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${WHITE}🔧 管理面板${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${CYAN}🌐 访问地址:${NC} http://${MTPROXY_SERVER_IP}:${MTPROXY_ADMIN_PORT}"
+    echo -e "${CYAN}👤 用户名:${NC} admin"
+    echo -e "${CYAN}🔒 密码:${NC} ${MTPROXY_ADMIN_PASSWORD}"
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${WHITE}📖 常用命令${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${YELLOW}mtproxy${NC}          # 打开管理面板"
+    echo -e "${YELLOW}mtproxy status${NC}   # 查看运行状态"
+    echo -e "${YELLOW}mtproxy restart${NC}  # 重启服务"
+    echo -e "${YELLOW}mtproxy logs${NC}     # 查看运行日志"
+    echo -e "${YELLOW}mtproxy stop${NC}     # 停止服务"
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    print_success "🎊 MTProxy安装完成！请保存上述连接信息"
+    echo ""
 }
 
 # 主安装函数
 main() {
-    print_title "MTProxy Manager 安装"
+    print_banner
     
     echo -e "${YELLOW}MTProxy Manager - Python实现的Telegram代理${NC}"
     echo ""
-    echo "特性:"
-    echo "• 🔧 一键安装 - 自动化部署"
-    echo "• 🎛️ 交互式管理 - 直观的命令行界面"
-    echo "• 🌐 远程控制 - 完整的SSH远程管理"
+    echo "✨ 特性:"
+    echo "• 🔧 一键安装 - 全自动化部署"
+    echo "• 🎛️ 交互式配置 - 简单易用的配置向导"
+    echo "• 🌐 Web管理 - 完整的Web管理界面"
     echo "• 🔒 安全可靠 - TLS支持，自动密钥生成"
     echo "• ⚡ 高性能 - 异步架构，支持高并发"
     echo ""
-    echo "项目地址: https://github.com/OrangeKing92/mtproxy-manager"
+    echo -e "${CYAN}项目地址: https://github.com/OrangeKing92/mtproxy-manager${NC}"
     echo ""
     
-    read -p "是否继续安装MTProxy Manager? [Y/n]: " confirm
-    if [[ $confirm == [Nn] ]]; then
+    while true; do
+        read -p "$(echo -e ${YELLOW}是否开始安装MTProxy Manager？${NC}) [Y/n]: " confirm
+        case $confirm in
+            [Yy]* | "")
+                break
+                ;;
+            [Nn]*)
         print_info "取消安装"
         exit 0
-    fi
+                ;;
+            *)
+                print_warning "请输入 Y 或 n"
+                ;;
+        esac
+    done
     
     # 执行安装步骤
     check_root
     check_system
+    get_server_info
+    interactive_config
     install_dependencies
     setup_environment
     install_code
-    interactive_config  # 添加交互式配置
     setup_service
     setup_management
     start_service
