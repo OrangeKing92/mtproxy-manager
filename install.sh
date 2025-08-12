@@ -89,7 +89,7 @@ install_dependencies() {
     case $PACKAGE_MANAGER in
         apt)
             apt update
-            apt install -y python3 python3-pip python3-venv git curl wget systemd
+            apt install -y python3 python3-pip python3-venv python3-full git curl wget systemd
             ;;
         yum)
             yum update -y
@@ -146,10 +146,18 @@ install_code() {
         cp requirements.txt "$INSTALL_DIR/"
     fi
     
-    # 安装Python依赖
+    # 创建虚拟环境
     cd "$INSTALL_DIR"
+    print_info "创建Python虚拟环境..."
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    # 升级pip
+    pip install --upgrade pip
+    
+    # 安装Python依赖
     if [[ -f requirements.txt ]]; then
-        python3 -m pip install -r requirements.txt
+        pip install -r requirements.txt
     else
         # 创建基础requirements.txt
         cat > requirements.txt << 'EOF'
@@ -165,7 +173,7 @@ python-dateutil>=2.8.2
 tabulate>=0.9.0
 watchdog>=2.1.6
 EOF
-        python3 -m pip install -r requirements.txt
+        pip install -r requirements.txt
     fi
     
     print_success "代码安装完成"
@@ -176,7 +184,7 @@ setup_service() {
     print_info "配置systemd服务..."
     
     # 生成配置文件
-    python3 "$INSTALL_DIR/tools/mtproxy_cli.py" generate-config
+    "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/tools/mtproxy_cli.py" generate-config
     
     # 创建systemd服务文件
     cat > "/etc/systemd/system/$SERVICE_NAME.service" << EOF
@@ -190,7 +198,7 @@ Type=simple
 User=$USER_NAME
 Group=$USER_NAME
 WorkingDirectory=$INSTALL_DIR
-ExecStart=/usr/bin/python3 -m mtproxy.server
+ExecStart=$INSTALL_DIR/venv/bin/python -m mtproxy.server
 Restart=always
 RestartSec=3
 StandardOutput=journal
@@ -221,9 +229,11 @@ setup_management() {
     fi
     
     # 创建全局命令
-    cat > /usr/local/bin/mtproxy << 'EOF'
+    cat > /usr/local/bin/mtproxy << EOF
 #!/bin/bash
-exec sudo /opt/python-mtproxy/manage.sh "$@"
+cd "$INSTALL_DIR"
+export PATH="$INSTALL_DIR/venv/bin:\$PATH"
+exec sudo "$INSTALL_DIR/manage.sh" "\$@"
 EOF
     chmod +x /usr/local/bin/mtproxy
     
@@ -264,7 +274,7 @@ show_connection_info() {
     # 显示连接信息
     if [[ -f "$INSTALL_DIR/tools/mtproxy_cli.py" ]]; then
         echo "连接信息:"
-        python3 "$INSTALL_DIR/tools/mtproxy_cli.py" proxy
+        "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/tools/mtproxy_cli.py" proxy
     fi
     
     echo ""

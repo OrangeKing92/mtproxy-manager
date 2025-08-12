@@ -9,6 +9,7 @@ set -e
 SERVICE_NAME="python-mtproxy"
 INSTALL_DIR="/opt/python-mtproxy"
 CONFIG_FILE="$INSTALL_DIR/config/mtproxy.conf"
+PYTHON_CMD="$INSTALL_DIR/venv/bin/python"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -24,6 +25,36 @@ print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# 检查Python环境
+check_python_env() {
+    if [[ ! -f "$PYTHON_CMD" ]]; then
+        print_error "Python虚拟环境不存在: $PYTHON_CMD"
+        print_info "尝试检查替代Python路径..."
+        
+        # 检查系统Python
+        if command -v python3 >/dev/null 2>&1; then
+            PYTHON_CMD="python3"
+            print_warning "使用系统Python: $PYTHON_CMD"
+        elif command -v python >/dev/null 2>&1; then
+            PYTHON_CMD="python"
+            print_warning "使用系统Python: $PYTHON_CMD"
+        else
+            print_error "未找到可用的Python解释器"
+            return 1
+        fi
+    fi
+    
+    # 检查Python版本
+    local python_version=$($PYTHON_CMD --version 2>&1 | grep -oE '[0-9]+\.[0-9]+')
+    if [[ -n "$python_version" ]]; then
+        print_info "使用Python版本: $python_version"
+        return 0
+    else
+        print_error "无法获取Python版本信息"
+        return 1
+    fi
+}
 
 # 检查是否为root用户
 check_root() {
@@ -44,6 +75,11 @@ check_installation() {
     if ! systemctl list-unit-files | grep -q $SERVICE_NAME; then
         print_error "MTProxy服务未注册"
         exit 1
+    fi
+    
+    # 检查Python环境
+    if ! check_python_env; then
+        print_warning "Python环境检查失败，某些功能可能不可用"
     fi
 }
 
@@ -394,6 +430,10 @@ show_detailed_status() {
     systemctl status $SERVICE_NAME --no-pager -l
     
     echo ""
+    echo -e "${CYAN}═══ Python进程状态 ═══${NC}"
+    check_python_service_health
+    
+    echo ""
     echo -e "${CYAN}═══ 端口监听状态 ═══${NC}"
     local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
     if ss -tlnp | grep ":$port "; then
@@ -405,6 +445,47 @@ show_detailed_status() {
     echo ""
     echo -e "${CYAN}═══ 连接信息 ═══${NC}"
     get_connection_info
+}
+
+# Python服务健康检查
+check_python_service_health() {
+    local pid=$(systemctl show -p MainPID --value $SERVICE_NAME)
+    
+    if [[ $pid != "0" && -n "$pid" ]]; then
+        print_success "Python进程运行中 (PID: $pid)"
+        
+        # 检查进程命令行
+        if [[ -f "/proc/$pid/cmdline" ]]; then
+            local cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
+            echo "命令行: $cmdline"
+        fi
+        
+        # 检查进程工作目录
+        if [[ -L "/proc/$pid/cwd" ]]; then
+            local cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null)
+            echo "工作目录: $cwd"
+        fi
+        
+        # 检查Python版本 (如果可能)
+        if [[ -f "$PYTHON_CMD" ]]; then
+            local python_version=$($PYTHON_CMD --version 2>&1)
+            echo "Python版本: $python_version"
+        fi
+        
+        # 检查进程资源使用
+        if ps -p $pid -o %cpu,%mem,etime,args --no-headers 2>/dev/null; then
+            echo "资源使用情况:"
+            ps -p $pid -o pid,user,%cpu,%mem,vsz,rss,etime,state,args --no-headers 2>/dev/null | \
+            while read line; do echo "  $line"; done
+        fi
+    else
+        print_error "Python进程未运行"
+        
+        # 检查最近的系统日志错误
+        echo "最近的错误日志:"
+        journalctl -u $SERVICE_NAME --no-pager -p err -n 3 --since "10 minutes ago" 2>/dev/null || \
+        echo "  无最近错误记录"
+    fi
 }
 
 show_logs() {
@@ -620,23 +701,63 @@ edit_config() {
 }
 
 validate_config() {
-    # 简单的配置文件验证
+    # 配置文件验证
     if [[ ! -f $CONFIG_FILE ]]; then
         print_error "配置文件不存在"
         return 1
     fi
     
-    local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' ')
-    local secret=$(grep "^secret:" $CONFIG_FILE | cut -d: -f2 | tr -d ' ')
+    print_info "验证配置文件..."
     
+    # 基本的YAML语法检查
+    local port=$(grep -A20 "^server:" $CONFIG_FILE | grep "port:" | cut -d: -f2 | tr -d ' "')
+    local secret=$(grep -A20 "^server:" $CONFIG_FILE | grep "secret:" | head -1 | cut -d: -f2 | tr -d ' "')
+    
+    # 验证端口号
     if [[ -z $port || ! $port =~ ^[0-9]+$ ]]; then
-        print_error "配置文件中端口号无效"
+        print_error "配置文件中端口号无效: '$port'"
         return 1
     fi
     
-    if [[ -z $secret || ${#secret} -ne 32 || ! $secret =~ ^[0-9a-fA-F]+$ ]]; then
-        print_error "配置文件中密钥无效"
+    if [[ $port -lt 1 || $port -gt 65535 ]]; then
+        print_error "端口号超出有效范围 (1-65535): $port"
         return 1
+    fi
+    
+    # 验证密钥
+    if [[ -z $secret ]]; then
+        print_error "配置文件中未找到密钥"
+        return 1
+    fi
+    
+    if [[ ${#secret} -ne 32 || ! $secret =~ ^[0-9a-fA-F]+$ ]]; then
+        print_error "配置文件中密钥格式无效: '$secret' (需要32位十六进制)"
+        return 1
+    fi
+    
+    # 使用Python验证YAML语法 (如果可用)
+    if [[ -f "$PYTHON_CMD" ]] || command -v python3 >/dev/null 2>&1; then
+        local python_check="$PYTHON_CMD"
+        [[ ! -f "$python_check" ]] && python_check="python3"
+        
+        if $python_check -c "
+import yaml
+import sys
+try:
+    with open('$CONFIG_FILE', 'r', encoding='utf-8') as f:
+        yaml.safe_load(f)
+    print('YAML语法检查通过')
+except yaml.YAMLError as e:
+    print(f'YAML语法错误: {e}')
+    sys.exit(1)
+except Exception as e:
+    print(f'配置文件读取错误: {e}')
+    sys.exit(1)
+" 2>/dev/null; then
+            print_info "YAML语法验证通过"
+        else
+            print_warning "YAML语法验证失败或PyYAML未安装，使用基本验证"
+        fi
     fi
     
     print_success "配置文件验证通过"
@@ -713,6 +834,36 @@ show_system_info() {
     echo "内存: $(free -h | grep Mem | awk '{print $2}')"
     echo "磁盘: $(df -h / | tail -1 | awk '{print $2}')"
     echo "负载: $(uptime | awk -F'load average:' '{print $2}')"
+    echo ""
+    
+    echo -e "${CYAN}═══ Python环境信息 ═══${NC}"
+    if [[ -f "$PYTHON_CMD" ]]; then
+        echo "Python路径: $PYTHON_CMD"
+        echo "Python版本: $($PYTHON_CMD --version 2>&1)"
+        
+        # 检查关键依赖
+        if $PYTHON_CMD -c "import yaml; print('PyYAML:', yaml.__version__)" 2>/dev/null; then
+            echo "PyYAML: 已安装"
+        else
+            echo "PyYAML: 未安装"
+        fi
+        
+        if $PYTHON_CMD -c "import asyncio; print('asyncio: 可用')" 2>/dev/null; then
+            echo "asyncio: 可用"
+        else
+            echo "asyncio: 不可用"
+        fi
+        
+        # 检查虚拟环境
+        if [[ "$PYTHON_CMD" == *"venv"* ]]; then
+            echo "环境类型: 虚拟环境"
+        else
+            echo "环境类型: 系统Python"
+        fi
+    else
+        echo "Python: 未找到或不可用"
+        check_python_env >/dev/null 2>&1
+    fi
     echo ""
     
     echo -e "${CYAN}═══ 网络信息 ═══${NC}"

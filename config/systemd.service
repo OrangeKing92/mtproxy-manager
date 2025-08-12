@@ -12,12 +12,13 @@ Group=mtproxy
 WorkingDirectory=/opt/python-mtproxy
 
 # Environment
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=PATH=/opt/python-mtproxy/venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/opt/python-mtproxy
 Environment=PYTHONUNBUFFERED=1
+Environment=VIRTUAL_ENV=/opt/python-mtproxy/venv
 
 # Main process
-ExecStart=/usr/bin/python3 -m mtproxy.server
+ExecStart=/opt/python-mtproxy/venv/bin/python -m mtproxy.server
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
 
