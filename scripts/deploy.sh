@@ -157,12 +157,23 @@ install_application() {
     REPO_URL="https://github.com/OrangeKing92/mtproxy-manager.git"
     TEMP_DIR="/tmp/mtproxy-manager-$$"
     
+    # Debug: Show variables
+    log_info "Process ID: $$"
+    log_info "Temp directory will be: $TEMP_DIR"
+    log_info "Install directory: $INSTALL_DIR"
+    
     # Clone the repository
     log_info "Downloading application from GitHub..."
-    if ! git clone "$REPO_URL" "$TEMP_DIR"; then
+    log_info "Cloning from: $REPO_URL"
+    log_info "Cloning to: $TEMP_DIR"
+    
+    if ! git clone "$REPO_URL" "$TEMP_DIR" 2>&1; then
         log_error "Failed to clone repository: $REPO_URL"
+        log_error "Target directory: $TEMP_DIR"
         exit 1
     fi
+    
+    log_success "Repository cloned successfully"
     
     # Copy application files
     log_info "Installing application files..."
