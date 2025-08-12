@@ -68,6 +68,7 @@ check_system() {
     
     echo -e "${GREEN}✅ 系统检查完成${NC}"
     echo ""
+    echo -e "${CYAN}DEBUG: check_system 函数执行完成${NC}" >&2
 }
 
 # 用户确认
@@ -198,13 +199,21 @@ show_completion() {
 
 # 主函数
 main() {
+    echo -e "${CYAN}DEBUG: 开始执行主函数${NC}" >&2
     show_welcome
+    echo -e "${CYAN}DEBUG: show_welcome 完成${NC}" >&2
     show_system_info
+    echo -e "${CYAN}DEBUG: show_system_info 完成${NC}" >&2
     check_root
+    echo -e "${CYAN}DEBUG: check_root 完成${NC}" >&2
     check_system
+    echo -e "${CYAN}DEBUG: check_system 完成${NC}" >&2
     confirm_install
+    echo -e "${CYAN}DEBUG: confirm_install 完成${NC}" >&2
     main_install
+    echo -e "${CYAN}DEBUG: main_install 完成${NC}" >&2
     show_completion
+    echo -e "${CYAN}DEBUG: show_completion 完成${NC}" >&2
 }
 
 # 执行主函数
