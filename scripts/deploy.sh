@@ -166,7 +166,24 @@ install_application() {
     
     # Copy application files
     log_info "Installing application files..."
-    cp -r "$TEMP_DIR"/* "$INSTALL_DIR/" 2>/dev/null || true
+    log_info "Copying from: $TEMP_DIR"
+    log_info "Copying to: $INSTALL_DIR"
+    
+    # Check if source and destination exist
+    if [[ ! -d "$TEMP_DIR" ]]; then
+        log_error "Source directory not found: $TEMP_DIR"
+        exit 1
+    fi
+    
+    if [[ ! -d "$INSTALL_DIR" ]]; then
+        log_error "Destination directory not found: $INSTALL_DIR"
+        exit 1
+    fi
+    
+    cp -r "$TEMP_DIR"/* "$INSTALL_DIR/" 2>/dev/null || {
+        log_error "Failed to copy files from $TEMP_DIR to $INSTALL_DIR"
+        exit 1
+    }
     
     # Clean up temporary directory
     rm -rf "$TEMP_DIR"
