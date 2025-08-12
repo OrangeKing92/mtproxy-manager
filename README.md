@@ -15,16 +15,28 @@
 
 ## 🚀 快速开始
 
-### 一键安装
+### 方式1: 一键安装（推荐）
 
 ```bash
+# 远程安装（推荐）
 bash <(curl -fsSL https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/install.sh)
 ```
 
-### 打开管理面板
+### 方式2: 本地部署
 
 ```bash
-mtproxy
+# 克隆代码
+git clone https://github.com/OrangeKing92/mtproxy-manager.git
+cd mtproxy-manager
+
+# 本地部署
+sudo ./scripts/deploy.sh
+```
+
+### 管理面板
+
+```bash
+mtproxy  # 打开管理面板
 ```
 
 安装完成后，系统会自动显示代理连接信息。
@@ -111,11 +123,29 @@ done
 ```
 mtproxy-manager/
 ├── mtproxy/           # 核心代理服务
+│   ├── server.py      # 主服务器
+│   ├── protocol.py    # 协议实现
+│   ├── crypto.py      # 加密模块
+│   └── ...
 ├── tools/             # 管理工具集
-├── scripts/           # 安装和部署脚本
+│   ├── mtproxy_cli.py # 命令行工具
+│   ├── monitor.py     # 监控工具
+│   └── ...
+├── scripts/           # 部署和管理脚本
+│   ├── deploy.sh      # 本地部署脚本
+│   ├── manage.sh      # 服务管理脚本
+│   └── uninstall.sh   # 卸载脚本
 ├── config/            # 配置文件模板
+├── requirements.txt   # Python依赖
 └── install.sh         # 一键安装脚本
 ```
+
+### 使用说明
+
+- **install.sh** - 一键安装脚本，适用于远程安装
+- **scripts/deploy.sh** - 本地部署脚本，适用于开发环境
+- **scripts/manage.sh** - 主要管理工具，安装后可通过`mtproxy`命令使用
+- **scripts/uninstall.sh** - 完全卸载MTProxy
 
 ## 🛠️ 系统要求
 

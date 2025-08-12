@@ -655,7 +655,7 @@ generate_qr_code() {
         return 1
     fi
     
-    local link="tg://proxy?server=$server_ip&port=$port&secret=$secret"
+    local link="https://t.me/proxy?server=$server_ip&port=$port&secret=$secret"
     
     echo -e "${CYAN}连接信息:${NC}"
     echo "服务器: $server_ip"
@@ -861,8 +861,10 @@ uninstall_program() {
     echo "这将完全卸载MTProxy系统！"
     read -p "确认要卸载吗? 输入 'UNINSTALL' 确认: " confirm
     if [[ $confirm == "UNINSTALL" ]]; then
-        if [[ -f "$INSTALL_DIR/scripts/uninstall.sh" ]]; then
-            bash "$INSTALL_DIR/scripts/uninstall.sh"
+        if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
+            bash "$INSTALL_DIR/uninstall.sh"
+        elif [[ -f "$(dirname "$0")/uninstall.sh" ]]; then
+            bash "$(dirname "$0")/uninstall.sh"
         else
             print_error "卸载脚本不存在"
         fi

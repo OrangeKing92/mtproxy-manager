@@ -69,8 +69,9 @@ if [[ -f "$LOGROTATE_FILE" ]]; then
     log_success "Logrotate configuration removed"
 fi
 
-# Remove symlinks
+# Remove global commands and symlinks  
 log_info "Removing command symlinks..."
+rm -f /usr/local/bin/mtproxy
 rm -f /usr/local/bin/mtproxy-cli
 rm -f /usr/local/bin/mtproxy-logs
 rm -f /usr/local/bin/mtproxy-health
