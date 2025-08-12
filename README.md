@@ -1,221 +1,98 @@
 # MTProxy Manager
 
-🚀 **一键部署 Telegram MTProxy 代理的 Python 实现**
-
-简单易用的 MTProxy 代理服务器，支持一键安装、图形化管理和远程控制。
+Python实现的Telegram MTProxy代理服务器，具有完整的交互式安装和管理界面。
 
 ## ✨ 特性
 
-- 🔧 **一键安装** - 自动化部署脚本，支持主流 Linux 发行版
-- 🎛️ **交互式管理** - 直观的命令行管理界面
-- 🌐 **远程控制** - 完整的 SSH 远程管理支持
-- 🔒 **安全可靠** - TLS 支持，自动密钥生成
-- 📊 **实时监控** - 服务状态监控和日志查看
-- ⚡ **高性能** - 异步架构，支持高并发连接
+- 🔧 **一键安装** - 全自动化部署，参考 [sunpma/mtp](https://github.com/sunpma/mtp.git) 的用户体验
+- 🎛️ **交互式配置** - 简单易用的配置向导，智能端口检测
+- 🌐 **Web管理** - 完整的Web管理界面
+- 🔒 **安全可靠** - TLS支持，自动密钥生成
+- ⚡ **高性能** - 异步架构，支持高并发
 
-## 🚀 快速开始
-
-### 方式1: 一键安装（推荐）
+## 🚀 快速安装
 
 ```bash
-# 远程安装（推荐）
 bash <(curl -fsSL https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/install.sh)
 ```
 
-### 方式2: 本地部署
+## 🎮 安装演示
 
+安装脚本包含完整的交互式配置向导：
+
+### 1. 美观的启动界面
+```
+    __  __  _______  _____                       
+   |  \/  ||__   __|  __ \                      
+   | \  / |   | |  | |__) |_ __   ___  __  __  _   _ 
+   | |\/| |   | |  |  ___/| '__| / _ \ \\\/  || | | |
+   | |  | |   | |  | |    | |   | (_) |>  <| |_| |
+   |_|  |_|   |_|  |_|    |_|   \___//_/\_\____/
+
+      Telegram MTProxy Manager v3.1
+      https://github.com/OrangeKing92/mtproxy-manager
+```
+
+### 2. 服务器信息检测
+- 自动获取服务器IP地址
+- 检测系统版本和架构
+- 显示内存配置
+
+### 3. 交互式配置向导
+- **端口配置**: 智能检测端口冲突
+- **域名选择**: 4种预设选项 + 自定义
+- **密码验证**: 最小长度要求
+- **配置确认**: 完整信息预览
+
+### 4. 完整的连接信息
+安装完成后显示：
+- 📱 Telegram连接链接
+- 🔧 Web管理面板地址
+- 📖 常用管理命令
+
+## 📱 使用方法
+
+### 管理命令
 ```bash
-# 克隆代码
-git clone https://github.com/OrangeKing92/mtproxy-manager.git
-cd mtproxy-manager
-
-# 本地部署
-sudo ./scripts/deploy.sh
+mtproxy          # 打开管理面板
+mtproxy status   # 查看运行状态
+mtproxy restart  # 重启服务
+mtproxy logs     # 查看运行日志
+mtproxy stop     # 停止服务
 ```
 
-### 管理面板
-
+### 系统服务
 ```bash
-mtproxy  # 打开管理面板
+systemctl status python-mtproxy    # 查看状态
+systemctl restart python-mtproxy   # 重启服务
+journalctl -u python-mtproxy -f    # 查看日志
 ```
 
-安装完成后，系统会自动显示代理连接信息。
+## 🔧 系统要求
 
-## 📱 连接到 Telegram
-
-### 方法一：自动连接（推荐）
-1. 复制安装完成后显示的连接链接
-2. 在手机上打开链接，Telegram 会自动提示添加代理
-3. 点击"连接代理"即可使用
-
-### 方法二：手动配置
-在 Telegram 设置中添加 MTProto 代理：
-- **服务器**：你的服务器 IP
-- **端口**：8443（默认）
-- **密钥**：安装时生成的 32 位密钥
-
-## 🎛️ 管理功能
-
-运行 `mtproxy` 命令进入管理面板：
-
-### 📋 服务管理
-- 启动/停止/重启服务
-- 查看服务状态和日志
-- 实时监控连接数和流量
-
-### ⚙️ 配置管理
-- 修改监听端口
-- 重新生成连接密钥
-- 查看完整连接信息
-- 生成连接二维码
-
-### 🔧 系统工具
-- 程序更新和卸载
-- 系统信息查看
-- 防火墙配置
-- 配置文件备份恢复
-
-## 📝 常用命令
-
-```bash
-# 管理面板
-mtproxy
-
-# 服务控制
-systemctl start|stop|restart|status python-mtproxy
-
-# 查看日志
-journalctl -u python-mtproxy -f
-
-# 快速获取连接信息
-python tools/mtproxy_cli.py proxy
-```
-
-## 🔧 远程管理
-
-### SSH 工具集
-
-```bash
-# 远程查看服务状态
-ssh user@server "python /opt/python-mtproxy/tools/mtproxy_cli.py status"
-
-# 远程获取代理信息
-ssh user@server "python /opt/python-mtproxy/tools/mtproxy_cli.py proxy"
-
-# 远程查看日志
-ssh user@server "python /opt/python-mtproxy/tools/mtproxy_cli.py logs"
-
-# 远程健康检查
-ssh user@server "python /opt/python-mtproxy/tools/mtproxy_cli.py health"
-```
-
-### 批量管理
-
-```bash
-# 多服务器状态检查
-for server in server1 server2 server3; do
-    ssh $server "python /opt/python-mtproxy/tools/mtproxy_cli.py status"
-done
-```
-
-## 📁 项目结构
-
-```
-mtproxy-manager/
-├── mtproxy/           # 核心代理服务
-│   ├── server.py      # 主服务器
-│   ├── protocol.py    # 协议实现
-│   ├── crypto.py      # 加密模块
-│   └── ...
-├── tools/             # 管理工具集
-│   ├── mtproxy_cli.py # 命令行工具
-│   ├── monitor.py     # 监控工具
-│   └── ...
-├── scripts/           # 部署和管理脚本
-│   ├── deploy.sh      # 本地部署脚本
-│   ├── manage.sh      # 服务管理脚本
-│   └── uninstall.sh   # 卸载脚本
-├── config/            # 配置文件模板
-├── requirements.txt   # Python依赖
-└── install.sh         # 一键安装脚本
-```
-
-### 使用说明
-
-- **install.sh** - 一键安装脚本，适用于远程安装
-- **scripts/deploy.sh** - 本地部署脚本，适用于开发环境
-- **scripts/manage.sh** - 主要管理工具，安装后可通过`mtproxy`命令使用
-- **scripts/uninstall.sh** - 完全卸载MTProxy
-
-## 🛠️ 系统要求
-
-- **操作系统**: Ubuntu 18.04+ / Debian 10+ / CentOS 7+
+- **操作系统**: Ubuntu 18.04+, Debian 10+, CentOS 7+
 - **Python**: 3.8+
-- **内存**: 最少 512MB，推荐 1GB+
-- **网络**: 稳定的互联网连接和公网 IP
-- **权限**: Root 或 sudo 权限
+- **权限**: root用户
+- **网络**: 外网访问权限
 
-## 🔍 故障排除
+## 📋 更新日志
 
-### 常见问题
+### v3.1 (当前版本)
+- ✅ 修复git clone目录冲突错误
+- ✅ 集成交互式配置功能
+- ✅ 美化界面设计和用户体验
+- ✅ 智能端口冲突检测
+- ✅ 参考sunpma/mtp项目的优秀设计
 
-**服务无法启动？**
-```bash
-# 检查日志
-journalctl -u python-mtproxy -n 50
+### v3.0
+- 初始Python实现
+- 基础的一键安装功能
+- Systemd服务支持
 
-# 检查端口占用
-ss -tlnp | grep :8443
+## 🤝 致谢
 
-# 运行健康检查
-python tools/mtproxy_cli.py health
-```
-
-**无法连接？**
-```bash
-# 检查防火墙
-ufw status
-
-# 测试端口连通性
-telnet 你的服务器IP 8443
-```
-
-## 🗑️ 卸载
-
-```bash
-# 使用管理面板卸载
-mtproxy  # 选择卸载选项
-
-# 或运行卸载脚本
-sudo /opt/python-mtproxy/scripts/uninstall.sh
-```
-
-## 📋 配置文件
-
-主配置文件位于：`/opt/python-mtproxy/config/mtproxy.conf`
-
-```yaml
-server:
-  host: 0.0.0.0
-  port: 8443
-  secret: auto_generate
-  tls_secret: auto_generate
-  fake_domain: www.cloudflare.com
-  max_connections: 1000
-
-logging:
-  level: INFO
-  file: logs/mtproxy.log
-```
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
+本项目在交互式安装体验方面参考了 [sunpma/mtp](https://github.com/sunpma/mtp.git) 项目的优秀设计。
 
 ## 📄 许可证
 
 MIT License
-
----
-
-⭐ 如果这个项目对你有帮助，请给个 Star！
