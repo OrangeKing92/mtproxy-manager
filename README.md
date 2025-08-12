@@ -1,98 +1,67 @@
-# MTProxy Manager
+# MTProxy 一键部署
 
-Python实现的Telegram MTProxy代理服务器，具有完整的交互式安装和管理界面。
+> 基于 [ellermister/mtproxy](https://github.com/ellermister/mtproxy) 的简化版本
+> 
+> **目标明确：就是要创建一个 MTProxy 代理，仅此而已。**
 
-## ✨ 特性
+## 🚀 一键部署
 
-- 🔧 **一键安装** - 全自动化部署，参考 [sunpma/mtp](https://github.com/sunpma/mtp.git) 的用户体验
-- 🎛️ **交互式配置** - 简单易用的配置向导，智能端口检测
-- 🌐 **Web管理** - 完整的Web管理界面
-- 🔒 **安全可靠** - TLS支持，自动密钥生成
-- ⚡ **高性能** - 异步架构，支持高并发
-
-## 🚀 快速安装
+**在您的Linux服务器上运行：**
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/install.sh)
+# 方法1：直接运行（推荐）
+wget -O- https://raw.githubusercontent.com/YOUR_USERNAME/MTPorxy/main/deploy.sh | sudo bash
+
+# 方法2：下载后运行
+git clone https://github.com/YOUR_USERNAME/MTPorxy.git
+cd MTPorxy
+sudo bash deploy.sh
 ```
 
-## 🎮 安装演示
+> ⚠️ **注意**：请将上面的 `YOUR_USERNAME` 替换为您的GitHub用户名
 
-安装脚本包含完整的交互式配置向导：
+## 📋 管理命令
 
-### 1. 美观的启动界面
-```
-    __  __  _______  _____                       
-   |  \/  ||__   __|  __ \                      
-   | \  / |   | |  | |__) |_ __   ___  __  __  _   _ 
-   | |\/| |   | |  |  ___/| '__| / _ \ \\\/  || | | |
-   | |  | |   | |  | |    | |   | (_) |>  <| |_| |
-   |_|  |_|   |_|  |_|    |_|   \___//_/\_\____/
+**部署完成后，在服务器上使用以下命令管理MTProxy：**
 
-      Telegram MTProxy Manager v3.1
-      https://github.com/OrangeKing92/mtproxy-manager
-```
-
-### 2. 服务器信息检测
-- 自动获取服务器IP地址
-- 检测系统版本和架构
-- 显示内存配置
-
-### 3. 交互式配置向导
-- **端口配置**: 智能检测端口冲突
-- **域名选择**: 4种预设选项 + 自定义
-- **密码验证**: 最小长度要求
-- **配置确认**: 完整信息预览
-
-### 4. 完整的连接信息
-安装完成后显示：
-- 📱 Telegram连接链接
-- 🔧 Web管理面板地址
-- 📖 常用管理命令
-
-## 📱 使用方法
-
-### 管理命令
 ```bash
-mtproxy          # 打开管理面板
-mtproxy status   # 查看运行状态
-mtproxy restart  # 重启服务
-mtproxy logs     # 查看运行日志
-mtproxy stop     # 停止服务
+# 启动服务
+bash mtproxy_manage.sh start
+
+# 停止服务
+bash mtproxy_manage.sh stop
+
+# 重启服务
+bash mtproxy_manage.sh restart
+
+# 查看状态
+bash mtproxy_manage.sh status
+
+# 查看日志
+bash mtproxy_manage.sh log
+
+# 显示代理链接（重要！）
+bash mtproxy_manage.sh links
+
+# 卸载服务
+bash mtproxy_manage.sh uninstall
 ```
 
-### 系统服务
-```bash
-systemctl status python-mtproxy    # 查看状态
-systemctl restart python-mtproxy   # 重启服务
-journalctl -u python-mtproxy -f    # 查看日志
-```
+> 💡 **提示**：部署成功后，一定要运行 `bash mtproxy_manage.sh links` 获取代理链接！
 
-## 🔧 系统要求
+## 📁 文件说明
 
-- **操作系统**: Ubuntu 18.04+, Debian 10+, CentOS 7+
-- **Python**: 3.8+
-- **权限**: root用户
-- **网络**: 外网访问权限
+- `deploy.sh` - 一键部署脚本
+- `mtproxy_manage.sh` - 管理脚本
+- `mtproxy_core.sh` - 核心脚本（来自ellermister）
 
-## 📋 更新日志
+## ⚡ 特点
 
-### v3.1 (当前版本)
-- ✅ 修复git clone目录冲突错误
-- ✅ 集成交互式配置功能
-- ✅ 美化界面设计和用户体验
-- ✅ 智能端口冲突检测
-- ✅ 参考sunpma/mtp项目的优秀设计
+- **极简设计** - 只做一件事：部署MTProxy
+- **一键操作** - 部署和管理都是一条命令
+- **基于成熟方案** - 使用经过验证的ellermister脚本
+- **无过度设计** - 删除了所有不必要的功能
 
-### v3.0
-- 初始Python实现
-- 基础的一键安装功能
-- Systemd服务支持
+## 📝 许可证
 
-## 🤝 致谢
-
-本项目在交互式安装体验方面参考了 [sunpma/mtp](https://github.com/sunpma/mtp.git) 项目的优秀设计。
-
-## 📄 许可证
-
-MIT License
+本项目基于 ellermister/mtproxy 项目，请遵循其许可证要求。
