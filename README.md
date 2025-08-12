@@ -10,15 +10,13 @@
 
 ```bash
 # 方法1：直接运行（推荐）
-wget -O- https://raw.githubusercontent.com/YOUR_USERNAME/MTPorxy/main/deploy.sh | sudo bash
+wget -O- https://raw.githubusercontent.com/OrangeKing92/mtproxy-manager/main/deploy.sh | sudo bash
 
 # 方法2：下载后运行
-git clone https://github.com/YOUR_USERNAME/MTPorxy.git
-cd MTPorxy
+git clone https://github.com/OrangeKing92/mtproxy-manager.git
+cd mtproxy-manager
 sudo bash deploy.sh
 ```
-
-> ⚠️ **注意**：请将上面的 `YOUR_USERNAME` 替换为您的GitHub用户名
 
 ## 📋 管理命令
 
