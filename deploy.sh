@@ -81,9 +81,17 @@ confirm_install() {
     while true; do
         read -p "$(echo -e ${WHITE}是否继续安装？[y/N]: ${NC})" yn
         case $yn in
-            [Yy]* ) break;;
-            [Nn]* ) echo -e "${RED}❌ 安装已取消${NC}"; exit 0;;
-            * ) echo -e "${RED}❌ 安装已取消${NC}"; exit 0;;
+            [Yy]* ) 
+                echo -e "${GREEN}✅ 开始安装...${NC}"
+                break;;
+            [Nn]* ) 
+                echo -e "${RED}❌ 安装已取消${NC}"
+                exit 0;;
+            "" ) 
+                echo -e "${RED}❌ 安装已取消（默认选择 No）${NC}"
+                exit 0;;
+            * ) 
+                echo -e "${YELLOW}请输入 y 或 n${NC}";;
         esac
     done
     echo ""
