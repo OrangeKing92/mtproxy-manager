@@ -153,24 +153,28 @@ setup_directories() {
 install_application() {
     log_info "Installing Python application..."
     
-    # Determine source directory
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    SOURCE_DIR="$(dirname "$SCRIPT_DIR")"
+    # GitHub repository information
+    REPO_URL="https://github.com/OrangeKing92/mtproxy-manager.git"
+    TEMP_DIR="/tmp/mtproxy-manager-$$"
     
-    # Copy application files
-    if [[ -d "$SOURCE_DIR/mtproxy" ]]; then
-        log_info "Copying application files..."
-        cp -r "$SOURCE_DIR"/* "$INSTALL_DIR/" 2>/dev/null || true
-        
-        # Remove git directory and cache files
-        rm -rf "$INSTALL_DIR/.git"
-        find "$INSTALL_DIR" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-        find "$INSTALL_DIR" -name "*.pyc" -delete 2>/dev/null || true
-        
-    else
-        log_error "Source directory not found: $SOURCE_DIR"
+    # Clone the repository
+    log_info "Downloading application from GitHub..."
+    if ! git clone "$REPO_URL" "$TEMP_DIR"; then
+        log_error "Failed to clone repository: $REPO_URL"
         exit 1
     fi
+    
+    # Copy application files
+    log_info "Installing application files..."
+    cp -r "$TEMP_DIR"/* "$INSTALL_DIR/" 2>/dev/null || true
+    
+    # Clean up temporary directory
+    rm -rf "$TEMP_DIR"
+    
+    # Remove git directory and cache files
+    rm -rf "$INSTALL_DIR/.git"
+    find "$INSTALL_DIR" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+    find "$INSTALL_DIR" -name "*.pyc" -delete 2>/dev/null || true
     
     # Create virtual environment
     log_info "Creating Python virtual environment..."
@@ -558,6 +562,8 @@ update_deployment() {
     mkdir -p "$BACKUP_DIR"
     cp -r "$INSTALL_DIR/mtproxy" "$BACKUP_DIR/" 2>/dev/null || true
     cp -r "$INSTALL_DIR/tools" "$BACKUP_DIR/" 2>/dev/null || true
+    cp -r "$INSTALL_DIR/scripts" "$BACKUP_DIR/" 2>/dev/null || true
+    cp "$INSTALL_DIR/requirements.txt" "$BACKUP_DIR/" 2>/dev/null || true
     
     # Update application
     install_application
@@ -565,6 +571,12 @@ update_deployment() {
     # Update dependencies
     log_info "Updating Python dependencies..."
     sudo -u "$USER_NAME" "$INSTALL_DIR/venv/bin/pip" install --upgrade -r "$INSTALL_DIR/requirements.txt"
+    
+    # Reinstall application in development mode
+    sudo -u "$USER_NAME" "$INSTALL_DIR/venv/bin/pip" install -e "$INSTALL_DIR"
+    
+    # Set permissions
+    chown -R "$USER_NAME:$USER_NAME" "$INSTALL_DIR"
     
     # Start service
     log_info "Starting service..."
